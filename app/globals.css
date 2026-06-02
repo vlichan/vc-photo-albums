@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --font-sans: Inter, "Helvetica Neue", Arial, sans-serif;
+  background: #f7f5f0;
+  color: #111111;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: #f7f5f0;
+  color: #111111;
+  font-family: var(--font-sans);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: #111111;
+  color: #f7f5f0;
+}
+
+.masonry {
+  column-gap: 14px;
+}
+
+.masonry > * {
+  break-inside: avoid;
+  margin-bottom: 14px;
+}
