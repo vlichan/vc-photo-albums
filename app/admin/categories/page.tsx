@@ -3,9 +3,9 @@ import { ArrowLeft } from "lucide-react";
 import { getAdminCategories } from "@/lib/supabase/admin";
 import {
   createCategory,
-  deleteCategory,
   updateCategory
 } from "@/app/admin/categories/actions";
+import { DeleteCategoryForm } from "@/components/admin/delete-category-form";
 
 export default async function AdminCategoriesPage() {
   const categories = await getAdminCategories();
@@ -63,6 +63,11 @@ export default async function AdminCategoriesPage() {
             <span>Save</span>
             <span>Delete</span>
           </div>
+          {categories.length === 0 ? (
+            <div className="px-4 py-8 text-sm text-muted">
+              暂无分类。先创建 Bags、Shoes 或 New Arrivals 这样的基础分类。
+            </div>
+          ) : null}
           {categories.map((category) => (
             <div
               key={category.id}
@@ -86,12 +91,7 @@ export default async function AdminCategoriesPage() {
                   保存
                 </button>
               </form>
-              <form action={deleteCategory}>
-                <input name="id" type="hidden" value={category.id} />
-                <button className="border border-line px-4 py-2 text-sm text-muted" type="submit">
-                  删除
-                </button>
-              </form>
+              <DeleteCategoryForm categoryId={category.id} categoryName={category.name} />
             </div>
           ))}
         </section>

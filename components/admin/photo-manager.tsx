@@ -187,6 +187,11 @@ export function PhotoManager({ albumId, albumSlug, photos }: PhotoManagerProps) 
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        {orderedPhotos.length === 0 ? (
+          <div className="border border-line p-8 text-sm text-muted sm:col-span-2">
+            暂无图片。先在左侧上传图片，上传完成后会显示在这里。
+          </div>
+        ) : null}
         {orderedPhotos.map((photo, index) => (
           <div
             className={`border border-line bg-white ${draggedId === photo.id ? "opacity-60" : ""}`}

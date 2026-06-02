@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getAdminAlbums, getAdminCategories } from "@/lib/supabase/admin";
-import { createAlbum, deleteAlbum, updateAlbum } from "@/app/admin/albums/actions";
+import { createAlbum, updateAlbum } from "@/app/admin/albums/actions";
+import { DeleteAlbumForm } from "@/components/admin/delete-album-form";
 
 export default async function AdminAlbumsPage() {
   const [albums, categories] = await Promise.all([
@@ -110,6 +111,11 @@ export default async function AdminAlbumsPage() {
             <h2 className="text-xl font-medium text-ink">已有相册</h2>
             <p className="mt-1 text-sm text-muted">下面是数据库中已创建的相册，可在这里编辑或删除。</p>
           </div>
+          {albums.length === 0 ? (
+            <div className="border border-line bg-white p-8 text-sm text-muted">
+              暂无相册。先创建一个相册，再进入图片管理上传产品图片。
+            </div>
+          ) : null}
           {albums.map((album) => (
             <div key={album.id} className="border border-line bg-white p-5">
               <div className="mb-4 border-b border-line pb-4">
@@ -207,12 +213,7 @@ export default async function AdminAlbumsPage() {
                   </div>
                 </div>
               </form>
-              <form action={deleteAlbum} className="mt-3">
-                <input name="id" type="hidden" value={album.id} />
-                <button className="border border-line px-4 py-2 text-sm text-muted" type="submit">
-                  删除相册
-                </button>
-              </form>
+              <DeleteAlbumForm albumId={album.id} albumTitle={album.title} />
             </div>
           ))}
         </section>

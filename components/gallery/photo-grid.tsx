@@ -7,7 +7,11 @@ import type { Photo } from "@/types/album";
 
 export function PhotoGrid({ photos }: { photos: Photo[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchStart, setTouchStart] = useState<{
+    x: number;
+    y: number;
+    isMultiTouch: boolean;
+  } | null>(null);
   const activePhoto = activeIndex === null ? null : photos[activeIndex];
 
   function showPrevious() {
@@ -22,26 +26,35 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
     );
   }
 
-  function handleTouchEnd(touchEndX: number) {
-    if (touchStartX === null) {
+  function handleTouchEnd(touchEndX: number, touchEndY: number) {
+    if (!touchStart || touchStart.isMultiTouch) {
       return;
     }
 
-    const distance = touchStartX - touchEndX;
+    const horizontalDistance = touchStart.x - touchEndX;
+    const verticalDistance = Math.abs(touchStart.y - touchEndY);
+    const isIntentionalSwipe =
+      Math.abs(horizontalDistance) > 80 &&
+      Math.abs(horizontalDistance) > verticalDistance * 2;
 
-    if (Math.abs(distance) > 45) {
-      if (distance > 0) {
+    if (isIntentionalSwipe) {
+      if (horizontalDistance > 0) {
         showNext();
       } else {
         showPrevious();
       }
     }
 
-    setTouchStartX(null);
+    setTouchStart(null);
   }
 
   return (
     <>
+      {photos.length === 0 ? (
+        <section className="border border-line bg-white p-8 text-sm text-muted">
+          这个相册暂时还没有图片。
+        </section>
+      ) : null}
       <div className="masonry columns-1 sm:columns-2 lg:columns-3">
         {photos.map((photo, index) => (
           <button
@@ -68,8 +81,19 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
       {activePhoto ? (
         <div
           className="fixed inset-0 z-50 bg-ink/95 text-paper"
-          onTouchEnd={(event) => handleTouchEnd(event.changedTouches[0].clientX)}
-          onTouchStart={(event) => setTouchStartX(event.touches[0].clientX)}
+          onTouchEnd={(event) =>
+            handleTouchEnd(
+              event.changedTouches[0].clientX,
+              event.changedTouches[0].clientY
+            )
+          }
+          onTouchStart={(event) =>
+            setTouchStart({
+              x: event.touches[0].clientX,
+              y: event.touches[0].clientY,
+              isMultiTouch: event.touches.length > 1
+            })
+          }
         >
           <button
             aria-label="Close image"
