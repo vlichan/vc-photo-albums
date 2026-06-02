@@ -23,8 +23,9 @@ function getAlbumPayload(formData: FormData) {
     title: getRequiredString(formData, "title"),
     slug: getRequiredString(formData, "slug"),
     description: getOptionalString(formData, "description") ?? "",
-    cover_image: getRequiredString(formData, "cover_image"),
+    cover_image: getOptionalString(formData, "cover_image"),
     category_id: getOptionalString(formData, "category_id"),
+    password: getOptionalString(formData, "password"),
     is_public: formData.get("is_public") === "on"
   };
 }

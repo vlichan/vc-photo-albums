@@ -265,3 +265,47 @@ export async function deleteAlbumPhotosWithState(
     };
   }
 }
+
+export async function setAlbumCoverWithState(
+  _state: PhotoActionState,
+  formData: FormData
+): Promise<PhotoActionState> {
+  const supabase = await createSupabaseServerClient();
+
+  try {
+    const albumId = getRequiredString(formData, "album_id");
+    const albumSlug = getRequiredString(formData, "album_slug");
+    const coverImage = getRequiredString(formData, "cover_image");
+
+    const { error } = await supabase
+      .from("albums")
+      .update({
+        cover_image: coverImage
+      })
+      .eq("id", albumId);
+
+    if (error) {
+      return {
+        ok: false,
+        message: `封面设置失败：${error.message}`
+      };
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin/albums");
+    revalidatePath(`/admin/albums/${albumId}`);
+    revalidatePath(`/album/${albumSlug}`);
+
+    return {
+      ok: true,
+      message: "封面已更新。"
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown cover error.";
+
+    return {
+      ok: false,
+      message
+    };
+  }
+}

@@ -68,8 +68,7 @@ export default async function AdminAlbumsPage() {
               <input
                 className="w-full border border-line px-4 py-3 outline-none transition focus:border-ink"
                 name="cover_image"
-                placeholder="https://..."
-                required
+                placeholder="可先留空，上传图片后再设为封面"
                 type="url"
               />
             </label>
@@ -86,6 +85,15 @@ export default async function AdminAlbumsPage() {
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="space-y-2">
+              <span className="block text-sm text-muted">Password</span>
+              <input
+                className="w-full border border-line px-4 py-3 outline-none transition focus:border-ink"
+                name="password"
+                placeholder="留空表示不设密码"
+                type="text"
+              />
             </label>
             <label className="flex items-center gap-3 text-sm text-muted">
               <input className="h-4 w-4" name="is_public" type="checkbox" />
@@ -141,7 +149,6 @@ export default async function AdminAlbumsPage() {
                   <input
                     className="w-full border border-line px-4 py-3 outline-none transition focus:border-ink"
                     name="cover_image"
-                    required
                     type="url"
                     defaultValue={album.coverImage}
                   />
@@ -160,6 +167,16 @@ export default async function AdminAlbumsPage() {
                       </option>
                     ))}
                   </select>
+                </label>
+                <label className="space-y-2">
+                  <span className="block text-sm text-muted">Password</span>
+                  <input
+                    className="w-full border border-line px-4 py-3 outline-none transition focus:border-ink"
+                    name="password"
+                    placeholder="留空表示不设密码"
+                    type="text"
+                    defaultValue={album.password ?? ""}
+                  />
                 </label>
                 <div className="flex flex-wrap items-center justify-between gap-3 lg:col-span-2">
                   <label className="flex items-center gap-3 text-sm text-muted">

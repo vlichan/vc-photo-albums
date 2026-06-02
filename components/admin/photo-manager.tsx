@@ -7,6 +7,7 @@ import type { Photo } from "@/types/album";
 import {
   deleteAlbumPhotosWithState,
   type PhotoActionState,
+  setAlbumCoverWithState,
   updatePhotoOrderWithState
 } from "@/app/admin/albums/[id]/actions";
 
@@ -53,6 +54,10 @@ export function PhotoManager({ albumId, albumSlug, photos }: PhotoManagerProps) 
     deleteAlbumPhotosWithState,
     initialState
   );
+  const [coverState, coverAction, isSettingCover] = useActionState(
+    setAlbumCoverWithState,
+    initialState
+  );
 
   const selectedCount = selectedIds.length;
   const orderedPhotoIds = useMemo(
@@ -75,6 +80,12 @@ export function PhotoManager({ albumId, albumSlug, photos }: PhotoManagerProps) 
     deletedIdsRef.current = [];
     router.refresh();
   }, [deleteState.ok, router]);
+
+  useEffect(() => {
+    if (coverState.ok) {
+      router.refresh();
+    }
+  }, [coverState.ok, router]);
 
   function togglePhoto(photoId: string) {
     setSelectedIds((current) =>
@@ -168,6 +179,11 @@ export function PhotoManager({ albumId, albumSlug, photos }: PhotoManagerProps) 
             {deleteState.message}
           </p>
         ) : null}
+        {coverState.message ? (
+          <p className={coverState.ok ? "text-sm text-moss" : "text-sm text-red-700"}>
+            {coverState.message}
+          </p>
+        ) : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -206,14 +222,28 @@ export function PhotoManager({ albumId, albumSlug, photos }: PhotoManagerProps) 
                 Select
               </label>
             </div>
-            <div className="space-y-1 p-3 text-sm text-muted">
-              <p>sort_order: {index + 1}</p>
-              <p>image_code: {getAutoCode(index)}</p>
-              <p>{photo.mimeType}</p>
-              <p>
-                {photo.width} x {photo.height}
-              </p>
-              <p>{Math.round(photo.fileSize / 1024)} KB</p>
+            <div className="space-y-3 p-3 text-sm text-muted">
+              <div className="space-y-1">
+                <p>sort_order: {index + 1}</p>
+                <p>image_code: {getAutoCode(index)}</p>
+                <p>{photo.mimeType}</p>
+                <p>
+                  {photo.width} x {photo.height}
+                </p>
+                <p>{Math.round(photo.fileSize / 1024)} KB</p>
+              </div>
+              <form action={coverAction}>
+                <input name="album_id" type="hidden" value={albumId} />
+                <input name="album_slug" type="hidden" value={albumSlug} />
+                <input name="cover_image" type="hidden" value={photo.imageUrl} />
+                <button
+                  className="border border-line px-4 py-2 text-sm text-muted disabled:cursor-not-allowed disabled:opacity-70"
+                  disabled={isSettingCover}
+                  type="submit"
+                >
+                  {isSettingCover ? "设置中..." : "设为封面"}
+                </button>
+              </form>
             </div>
           </div>
         ))}

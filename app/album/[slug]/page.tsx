@@ -1,9 +1,12 @@
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { CopyLinkButton } from "@/components/ui/copy-link-button";
+import { AlbumPasswordForm } from "@/components/gallery/album-password-form";
 import { PhotoGrid } from "@/components/gallery/photo-grid";
 import { WhatsappButton } from "@/components/layout/whatsapp-button";
+import { getAlbumAccessCookieName } from "@/lib/utils/album-access";
 import {
   getPublicAlbumBySlug,
   getPublicAlbumPhotos
@@ -23,7 +26,11 @@ export default async function AlbumPage({ params }: AlbumPageProps) {
     notFound();
   }
 
-  const albumPhotos = await getPublicAlbumPhotos(album.id);
+  const cookieStore = await cookies();
+  const hasAlbumAccess =
+    !album.password ||
+    cookieStore.get(getAlbumAccessCookieName(album.id))?.value === "granted";
+  const albumPhotos = hasAlbumAccess ? await getPublicAlbumPhotos(album.id) : [];
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const shareUrl = `${siteUrl}/album/${album.slug}`;
 
@@ -54,19 +61,15 @@ export default async function AlbumPage({ params }: AlbumPageProps) {
             </p>
           </div>
           <div className="text-sm text-muted">
-            {albumPhotos.length.toString().padStart(2, "0")} photos
+            {hasAlbumAccess ? albumPhotos.length.toString().padStart(2, "0") : "--"} photos
           </div>
         </header>
 
-        {album.password ? (
-          <section className="mb-8 border border-line bg-white p-5">
-            <p className="text-sm text-muted">
-              这个相册已设置访问密码。当前阶段先展示图片数据，后续会接入密码校验。
-            </p>
-          </section>
-        ) : null}
-
-        <PhotoGrid photos={albumPhotos} />
+        {hasAlbumAccess ? (
+          <PhotoGrid photos={albumPhotos} />
+        ) : (
+          <AlbumPasswordForm slug={album.slug} />
+        )}
       </div>
       <WhatsappButton />
     </main>

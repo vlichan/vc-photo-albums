@@ -7,6 +7,7 @@ import type { Photo } from "@/types/album";
 
 export function PhotoGrid({ photos }: { photos: Photo[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const activePhoto = activeIndex === null ? null : photos[activeIndex];
 
   function showPrevious() {
@@ -19,6 +20,24 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
     setActiveIndex((current) =>
       current === null ? null : (current + 1) % photos.length
     );
+  }
+
+  function handleTouchEnd(touchEndX: number) {
+    if (touchStartX === null) {
+      return;
+    }
+
+    const distance = touchStartX - touchEndX;
+
+    if (Math.abs(distance) > 45) {
+      if (distance > 0) {
+        showNext();
+      } else {
+        showPrevious();
+      }
+    }
+
+    setTouchStartX(null);
   }
 
   return (
@@ -47,7 +66,11 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
       </div>
 
       {activePhoto ? (
-        <div className="fixed inset-0 z-50 bg-ink/95 text-paper">
+        <div
+          className="fixed inset-0 z-50 bg-ink/95 text-paper"
+          onTouchEnd={(event) => handleTouchEnd(event.changedTouches[0].clientX)}
+          onTouchStart={(event) => setTouchStartX(event.touches[0].clientX)}
+        >
           <button
             aria-label="Close image"
             className="absolute right-4 top-4 grid h-11 w-11 place-items-center border border-white/20"
@@ -58,7 +81,7 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
           </button>
           <button
             aria-label="Previous image"
-            className="absolute left-4 top-1/2 hidden h-12 w-12 -translate-y-1/2 place-items-center border border-white/20 md:grid"
+            className="absolute left-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center border border-white/20 bg-ink/40 md:left-4 md:h-12 md:w-12"
             onClick={showPrevious}
             type="button"
           >
@@ -66,7 +89,7 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
           </button>
           <button
             aria-label="Next image"
-            className="absolute right-4 top-1/2 hidden h-12 w-12 -translate-y-1/2 place-items-center border border-white/20 md:grid"
+            className="absolute right-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center border border-white/20 bg-ink/40 md:right-4 md:h-12 md:w-12"
             onClick={showNext}
             type="button"
           >
