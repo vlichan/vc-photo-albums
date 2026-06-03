@@ -36,14 +36,17 @@ function movePhoto(photos: Photo[], draggedId: string, targetId: string) {
   return nextPhotos;
 }
 
-function getAutoCode(index: number) {
-  return (index + 1).toString().padStart(3, "0");
-}
+type LastMove = {
+  movedPhotoId: string;
+  beforePhotoId: string;
+  afterPhotoId: string;
+};
 
 export function PhotoManager({ albumId, albumSlug, photos }: PhotoManagerProps) {
   const router = useRouter();
   const [orderedPhotos, setOrderedPhotos] = useState(photos);
   const [draggedId, setDraggedId] = useState("");
+  const [lastMove, setLastMove] = useState<LastMove | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const deletedIdsRef = useRef<string[]>([]);
   const [sortState, sortAction, isSavingSort] = useActionState(
@@ -87,6 +90,13 @@ export function PhotoManager({ albumId, albumSlug, photos }: PhotoManagerProps) 
     }
   }, [coverState.ok, router]);
 
+  useEffect(() => {
+    if (sortState.ok) {
+      setLastMove(null);
+      router.refresh();
+    }
+  }, [router, sortState.ok]);
+
   function togglePhoto(photoId: string) {
     setSelectedIds((current) =>
       current.includes(photoId)
@@ -107,7 +117,7 @@ export function PhotoManager({ albumId, albumSlug, photos }: PhotoManagerProps) 
         <div>
           <h2 className="text-xl font-medium text-ink">已有图片</h2>
           <p className="mt-1 text-sm text-muted">
-            拖拽图片调整顺序，保存后会自动更新 sort_order 和 image_code。
+            拖拽图片调整顺序，保存后只更新 sort_order，image_code 保持不变。
           </p>
         </div>
         <span className="text-sm text-muted">{orderedPhotos.length} photos</span>
@@ -127,12 +137,15 @@ export function PhotoManager({ albumId, albumSlug, photos }: PhotoManagerProps) 
           <input name="album_id" type="hidden" value={albumId} />
           <input name="album_slug" type="hidden" value={albumSlug} />
           <input name="ordered_photo_ids" type="hidden" value={JSON.stringify(orderedPhotoIds)} />
+          <input name="moved_photo_id" type="hidden" value={lastMove?.movedPhotoId ?? ""} />
+          <input name="before_photo_id" type="hidden" value={lastMove?.beforePhotoId ?? ""} />
+          <input name="after_photo_id" type="hidden" value={lastMove?.afterPhotoId ?? ""} />
           <button
             className="border border-ink px-4 py-2 text-sm text-ink disabled:cursor-not-allowed disabled:opacity-70"
-            disabled={isSavingSort}
+            disabled={isSavingSort || !lastMove}
             type="submit"
           >
-            {isSavingSort ? "保存中..." : "保存排序并自动编号"}
+            {isSavingSort ? "保存中..." : "保存排序"}
           </button>
         </form>
         <form
@@ -202,7 +215,25 @@ export function PhotoManager({ albumId, albumSlug, photos }: PhotoManagerProps) 
             onDragStart={() => setDraggedId(photo.id)}
             onDrop={() => {
               if (draggedId) {
-                setOrderedPhotos((current) => movePhoto(current, draggedId, photo.id));
+                setOrderedPhotos((current) => {
+                  const nextPhotos = movePhoto(current, draggedId, photo.id);
+                  const movedIndex = nextPhotos.findIndex(
+                    (nextPhoto) => nextPhoto.id === draggedId
+                  );
+                  const beforePhoto = movedIndex > 0 ? nextPhotos[movedIndex - 1] : null;
+                  const afterPhoto =
+                    movedIndex >= 0 && movedIndex < nextPhotos.length - 1
+                      ? nextPhotos[movedIndex + 1]
+                      : null;
+
+                  setLastMove({
+                    movedPhotoId: draggedId,
+                    beforePhotoId: beforePhoto?.id ?? "",
+                    afterPhotoId: afterPhoto?.id ?? ""
+                  });
+
+                  return nextPhotos;
+                });
               }
             }}
           >
@@ -215,7 +246,7 @@ export function PhotoManager({ albumId, albumSlug, photos }: PhotoManagerProps) 
                 src={photo.thumbnailUrl}
               />
               <span className="absolute bottom-3 right-3 bg-white/90 px-2 py-1 text-xs font-medium text-ink">
-                {getAutoCode(index)}
+                {photo.imageCode}
               </span>
               <label className="absolute left-3 top-3 bg-white/90 px-2 py-1 text-xs text-ink">
                 <input
@@ -229,8 +260,9 @@ export function PhotoManager({ albumId, albumSlug, photos }: PhotoManagerProps) 
             </div>
             <div className="space-y-3 p-3 text-sm text-muted">
               <div className="space-y-1">
-                <p>sort_order: {index + 1}</p>
-                <p>image_code: {getAutoCode(index)}</p>
+                <p>display position: {index + 1}</p>
+                <p>sort_order: {photo.sortOrder}</p>
+                <p>image_code: {photo.imageCode}</p>
                 <p>{photo.mimeType}</p>
                 <p>
                   {photo.width} x {photo.height}

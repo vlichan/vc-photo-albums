@@ -5,11 +5,19 @@ import { getHomeAlbums, getHomeCategories } from "@/lib/supabase/home";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
+type HomePageProps = {
+  searchParams: Promise<{
+    category?: string;
+  }>;
+};
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const { category } = await searchParams;
   const [categories, albums] = await Promise.all([
     getHomeCategories(),
-    getHomeAlbums()
+    getHomeAlbums(category)
   ]);
+  const activeCategory = category ?? "all";
 
   return (
     <main className="min-h-screen bg-paper">
@@ -27,11 +35,25 @@ export default async function HomePage() {
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+          <a
+            href="/"
+            className={`border px-4 py-3 text-center transition ${
+              activeCategory === "all"
+                ? "border-ink bg-ink text-paper"
+                : "border-line bg-white text-muted hover:border-ink hover:text-ink"
+            }`}
+          >
+            All
+          </a>
           {categories.map((category) => (
             <a
               key={category.id}
-              href={`#${category.slug}`}
-              className="border border-line bg-white px-4 py-3 text-center text-muted transition hover:border-ink hover:text-ink"
+              href={`/?category=${category.slug}`}
+              className={`border px-4 py-3 text-center transition ${
+                activeCategory === category.slug
+                  ? "border-ink bg-ink text-paper"
+                  : "border-line bg-white text-muted hover:border-ink hover:text-ink"
+              }`}
             >
               {category.name}
             </a>
@@ -41,6 +63,11 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-7xl px-5 pb-24 md:px-8">
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {albums.length === 0 ? (
+            <div className="border border-line bg-white p-8 text-sm text-muted sm:col-span-2 lg:col-span-3">
+              当前分类暂无相册。
+            </div>
+          ) : null}
           {albums.map((album) => (
             <AlbumCard key={album.id} album={album} />
           ))}

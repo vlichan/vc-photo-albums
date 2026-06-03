@@ -22,6 +22,8 @@ type PhotoDeleteRow = {
   thumbnail_url: string;
 };
 
+const SORT_ORDER_STEP = 1000;
+
 function parseMetadata(value: FormDataEntryValue | null) {
   if (typeof value !== "string" || value.trim() === "") {
     return [] as ImageMetadata[];
@@ -48,6 +50,11 @@ function getRequiredString(formData: FormData, key: string) {
   return value.trim();
 }
 
+function getOptionalString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
 function parseJsonStringArray(value: string, key: string) {
   try {
     const parsed = JSON.parse(value);
@@ -62,8 +69,16 @@ function parseJsonStringArray(value: string, key: string) {
   }
 }
 
-function getGeneratedImageCode(sortOrder: number) {
-  return sortOrder.toString().padStart(3, "0");
+function getNextImageCodeStart(photos: { imageCode: string }[]) {
+  return photos.reduce((maxCode, photo) => {
+    const match = photo.imageCode.match(/(\d+)$/);
+    const codeNumber = match ? Number(match[1]) : 0;
+    return Number.isFinite(codeNumber) ? Math.max(maxCode, codeNumber) : maxCode;
+  }, 0) + 1;
+}
+
+function getGeneratedImageCode(codeNumber: number) {
+  return codeNumber.toString().padStart(3, "0");
 }
 
 async function deleteR2Urls(urls: string[]) {
@@ -93,20 +108,24 @@ export async function uploadAlbumPhotos(formData: FormData) {
   const existingPhotos = await getAdminPhotos(albumId);
   const metadata = parseMetadata(formData.get("image_metadata"));
   const supabase = await createSupabaseServerClient();
-  const startOrder = existingPhotos.length;
+  const firstSortOrder =
+    existingPhotos.length > 0
+      ? existingPhotos[0].sortOrder - files.length * SORT_ORDER_STEP
+      : SORT_ORDER_STEP;
+  const firstImageCode = getNextImageCodeStart(existingPhotos);
 
   const rows = await Promise.all(
     files.map(async (file, index) => {
       const imageUrl = await uploadImageToR2(file, album.slug);
       const imageMetadata = getMetadataForFile(metadata, file);
-      const sortOrder = startOrder + index + 1;
+      const sortOrder = firstSortOrder + index * SORT_ORDER_STEP;
 
       return {
         album_id: album.id,
         image_url: imageUrl,
         thumbnail_url: imageUrl,
         sort_order: sortOrder,
-        image_code: getGeneratedImageCode(sortOrder),
+        image_code: getGeneratedImageCode(firstImageCode + index),
         mime_type: file.type || "application/octet-stream",
         file_size: file.size,
         width: imageMetadata?.width || 1200,
@@ -134,33 +153,88 @@ export async function updatePhotoOrderWithState(
   try {
     const albumId = getRequiredString(formData, "album_id");
     const albumSlug = getRequiredString(formData, "album_slug");
+    const movedPhotoId = getRequiredString(formData, "moved_photo_id");
+    const beforePhotoId = getOptionalString(formData, "before_photo_id");
+    const afterPhotoId = getOptionalString(formData, "after_photo_id");
     const photoIds = parseJsonStringArray(
       getRequiredString(formData, "ordered_photo_ids"),
       "ordered_photo_ids"
     );
 
-    const results = await Promise.all(
-      photoIds.map((photoId, index) => {
-        const sortOrder = index + 1;
-
-        return supabase
-          .from("photos")
-          .update({
-            sort_order: sortOrder,
-            image_code: getGeneratedImageCode(sortOrder)
-          })
-          .eq("id", photoId)
-          .eq("album_id", albumId);
-      })
+    const neighborIds = [movedPhotoId, beforePhotoId, afterPhotoId].filter(
+      (id): id is string => Boolean(id)
     );
+    const { data: neighborRows, error: loadError } = await supabase
+      .from("photos")
+      .select("id, sort_order")
+      .eq("album_id", albumId)
+      .in("id", neighborIds);
 
-    const failedResult = results.find((result) => result.error);
-
-    if (failedResult?.error) {
+    if (loadError) {
       return {
         ok: false,
-        message: `排序保存失败：${failedResult.error.message}`
+        message: `排序保存失败：${loadError.message}`
       };
+    }
+
+    const sortOrderById = new Map(
+      (neighborRows ?? []).map((row) => [row.id as string, row.sort_order as number])
+    );
+    const beforeSortOrder = beforePhotoId ? sortOrderById.get(beforePhotoId) : null;
+    const afterSortOrder = afterPhotoId ? sortOrderById.get(afterPhotoId) : null;
+
+    let nextSortOrder: number | null = null;
+
+    if (beforeSortOrder === null && afterSortOrder === null) {
+      nextSortOrder = SORT_ORDER_STEP;
+    } else if (beforeSortOrder === null && typeof afterSortOrder === "number") {
+      nextSortOrder = afterSortOrder - SORT_ORDER_STEP;
+    } else if (typeof beforeSortOrder === "number" && afterSortOrder === null) {
+      nextSortOrder = beforeSortOrder + SORT_ORDER_STEP;
+    } else if (typeof beforeSortOrder === "number" && typeof afterSortOrder === "number") {
+      const gap = afterSortOrder - beforeSortOrder;
+
+      if (gap > 1) {
+        nextSortOrder = Math.floor((beforeSortOrder + afterSortOrder) / 2);
+      }
+    }
+
+    if (nextSortOrder !== null) {
+      const { error } = await supabase
+        .from("photos")
+        .update({
+          sort_order: nextSortOrder
+        })
+        .eq("id", movedPhotoId)
+        .eq("album_id", albumId);
+
+      if (error) {
+        return {
+          ok: false,
+          message: `排序保存失败：${error.message}`
+        };
+      }
+    } else {
+      const results = await Promise.all(
+        photoIds.map((photoId, index) =>
+          supabase
+            .from("photos")
+            .update({
+              sort_order: (index + 1) * SORT_ORDER_STEP
+            })
+            .eq("id", photoId)
+            .eq("album_id", albumId)
+        )
+      );
+
+      const failedResult = results.find((result) => result.error);
+
+      if (failedResult?.error) {
+        return {
+          ok: false,
+          message: `排序保存失败：${failedResult.error.message}`
+        };
+      }
     }
 
     revalidatePath(`/admin/albums/${albumId}`);
@@ -168,7 +242,7 @@ export async function updatePhotoOrderWithState(
 
     return {
       ok: true,
-      message: "排序已保存，图片编号已自动更新。"
+      message: "排序已保存，图片编号保持不变。"
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown sort error.";

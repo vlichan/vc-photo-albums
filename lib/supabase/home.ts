@@ -65,15 +65,23 @@ export async function getHomeCategories() {
   return (data ?? []).map(mapCategory);
 }
 
-export async function getHomeAlbums() {
+export async function getHomeAlbums(categorySlug?: string) {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  const query = supabase
     .from("albums")
     .select(
-      "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories(name)"
+      categorySlug
+        ? "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories!inner(name, slug)"
+        : "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories(name)"
     )
     .not("cover_image", "is", null)
     .order("created_at", { ascending: false });
+
+  if (categorySlug) {
+    query.eq("categories.slug", categorySlug);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(`Failed to load albums: ${error.message}`);
