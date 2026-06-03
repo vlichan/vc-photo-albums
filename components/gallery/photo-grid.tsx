@@ -5,7 +5,17 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { Photo } from "@/types/album";
 
-export function PhotoGrid({ photos }: { photos: Photo[] }) {
+function getDisplayCode(photo: Photo, index: number, startIndex: number) {
+  return photo.imageCode || String(photo.sortOrder || startIndex + index + 1).padStart(3, "0");
+}
+
+export function PhotoGrid({
+  photos,
+  startIndex = 0
+}: {
+  photos: Photo[];
+  startIndex?: number;
+}) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [loadedPhotoIds, setLoadedPhotoIds] = useState<Set<string>>(new Set());
   const [touchStart, setTouchStart] = useState<{
@@ -15,6 +25,9 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
   } | null>(null);
   const activePhoto = activeIndex === null ? null : photos[activeIndex];
   const activeDisplayIndex = activeIndex ?? 0;
+  const activeDisplayCode = activePhoto
+    ? getDisplayCode(activePhoto, activeDisplayIndex, startIndex)
+    : "";
 
   function markLoaded(photoId: string) {
     setLoadedPhotoIds((current) => {
@@ -65,11 +78,11 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
           这个相册暂时还没有图片。
         </section>
       ) : null}
-      <div className="masonry columns-2 md:columns-3 xl:columns-4">
+      <div className="grid grid-cols-2 gap-1.5 min-[430px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 md:gap-2 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
         {photos.map((photo, index) => (
           <button
             key={photo.id}
-            className="group relative w-full overflow-hidden border border-line/70 bg-white text-left"
+            className="group relative aspect-square w-full overflow-hidden border border-line/70 bg-white text-left"
             onClick={() => setActiveIndex(index)}
             type="button"
           >
@@ -78,17 +91,16 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
             ) : null}
             <Image
               src={photo.thumbnailUrl}
-              alt={photo.imageCode}
-              width={photo.width}
-              height={photo.height}
-              sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw"
-              className={`h-auto w-full object-cover transition duration-500 group-hover:scale-[1.015] ${
+              alt={getDisplayCode(photo, index, startIndex)}
+              fill
+              sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 14vw, (min-width: 1024px) 16vw, (min-width: 768px) 20vw, (min-width: 430px) 33vw, 50vw"
+              className={`object-cover object-center transition duration-500 group-hover:scale-[1.02] ${
                 loadedPhotoIds.has(photo.id) ? "opacity-100" : "opacity-0"
               }`}
               onLoad={() => markLoaded(photo.id)}
             />
-            <span className="absolute bottom-2 right-2 bg-white/92 px-2 py-1 text-[11px] font-medium text-ink shadow-sm md:bottom-3 md:right-3 md:text-xs">
-              {photo.imageCode}
+            <span className="absolute bottom-1.5 right-1.5 bg-white/88 px-1.5 py-0.5 text-[10px] font-medium leading-none text-ink shadow-sm md:bottom-2 md:right-2 md:px-2 md:py-1 md:text-[11px]">
+              {getDisplayCode(photo, index, startIndex)}
             </span>
           </button>
         ))}
@@ -138,7 +150,7 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
           <div className="flex h-full items-center justify-center px-12 py-16 md:px-20">
             <Image
               src={activePhoto.imageUrl}
-              alt={activePhoto.imageCode}
+              alt={activeDisplayCode}
               width={activePhoto.width}
               height={activePhoto.height}
               className="max-h-full w-auto object-contain"
@@ -146,10 +158,9 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
             />
           </div>
           <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-4 text-xs uppercase tracking-[0.16em] text-paper/75 md:bottom-5 md:left-5 md:right-5">
-            <span>{activePhoto.imageCode}</span>
+            <span>{activeDisplayCode}</span>
             <span>
-              {(activeDisplayIndex + 1).toString().padStart(2, "0")} /{" "}
-              {photos.length.toString().padStart(2, "0")}
+              {(startIndex + activeDisplayIndex + 1).toString().padStart(2, "0")}
             </span>
           </div>
         </div>
