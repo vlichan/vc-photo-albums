@@ -18,29 +18,44 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     getHomeAlbums(category)
   ]);
   const activeCategory = category ?? "all";
+  const activeCategoryName =
+    activeCategory === "all"
+      ? "All albums"
+      : categories.find((item) => item.slug === activeCategory)?.name ?? "Albums";
 
   return (
     <main className="min-h-screen bg-paper">
       <SiteHeader />
-      <section className="mx-auto grid max-w-7xl gap-10 px-5 py-12 md:px-8 md:py-16 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
-        <div className="space-y-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-moss">
-            Private Product Albums
-          </p>
-          <h1 className="max-w-2xl text-4xl font-medium leading-tight text-ink md:text-6xl">
-            高级极简图片相册
-          </h1>
-          <p className="max-w-xl text-base leading-8 text-muted">
-            用清晰、安静、图片优先的方式向客户展示产品系列。每个相册都有独立链接，适合手机快速浏览和转发。
-          </p>
+      <section className="mx-auto max-w-7xl px-4 pb-6 pt-7 md:px-8 md:pb-8 md:pt-10">
+        <div className="grid gap-6 border-b border-line pb-6 md:grid-cols-[1fr_auto] md:items-end">
+          <div className="space-y-3">
+            <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted">
+              Private Product Albums
+            </p>
+            <h1 className="max-w-2xl text-3xl font-medium leading-tight text-ink md:text-5xl">
+              Product Catalog
+            </h1>
+            <p className="max-w-xl text-sm leading-7 text-muted md:text-base">
+              安静、清晰、图片优先的产品图册，适合客户快速浏览、收藏编号和转发相册链接。
+            </p>
+          </div>
+          <div className="text-left md:text-right">
+            <p className="text-2xl font-medium text-ink">{albums.length}</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted">
+              {activeCategoryName}
+            </p>
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 md:px-8">
+        <div className="-mx-4 flex gap-2 overflow-x-auto border-b border-line px-4 pb-4 text-sm md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
           <a
             href="/"
-            className={`border px-4 py-3 text-center transition ${
+            className={`shrink-0 border px-4 py-2.5 transition ${
               activeCategory === "all"
                 ? "border-ink bg-ink text-paper"
-                : "border-line bg-white text-muted hover:border-ink hover:text-ink"
+                : "border-line bg-transparent text-muted hover:border-ink hover:text-ink"
             }`}
           >
             All
@@ -49,10 +64,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <a
               key={category.id}
               href={`/?category=${category.slug}`}
-              className={`border px-4 py-3 text-center transition ${
+              className={`shrink-0 border px-4 py-2.5 transition ${
                 activeCategory === category.slug
                   ? "border-ink bg-ink text-paper"
-                  : "border-line bg-white text-muted hover:border-ink hover:text-ink"
+                  : "border-line bg-transparent text-muted hover:border-ink hover:text-ink"
               }`}
             >
               {category.name}
@@ -61,10 +76,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 pb-24 md:px-8">
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mx-auto max-w-7xl px-4 pb-24 pt-6 md:px-8 md:pt-8">
+        <div className="grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {albums.length === 0 ? (
-            <div className="border border-line bg-white p-8 text-sm text-muted sm:col-span-2 lg:col-span-3">
+            <div className="border border-line bg-white/55 p-8 text-sm text-muted sm:col-span-2 lg:col-span-3 xl:col-span-4">
               当前分类暂无相册。
             </div>
           ) : null}

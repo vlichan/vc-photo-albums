@@ -19,6 +19,7 @@ export type Album = {
 
 export type AlbumWithCategory = Album & {
   categoryName: string;
+  photoCount?: number;
 };
 
 export type Photo = {

@@ -7,12 +7,22 @@ import type { Photo } from "@/types/album";
 
 export function PhotoGrid({ photos }: { photos: Photo[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [loadedPhotoIds, setLoadedPhotoIds] = useState<Set<string>>(new Set());
   const [touchStart, setTouchStart] = useState<{
     x: number;
     y: number;
     isMultiTouch: boolean;
   } | null>(null);
   const activePhoto = activeIndex === null ? null : photos[activeIndex];
+  const activeDisplayIndex = activeIndex ?? 0;
+
+  function markLoaded(photoId: string) {
+    setLoadedPhotoIds((current) => {
+      const next = new Set(current);
+      next.add(photoId);
+      return next;
+    });
+  }
 
   function showPrevious() {
     setActiveIndex((current) =>
@@ -51,27 +61,33 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
   return (
     <>
       {photos.length === 0 ? (
-        <section className="border border-line bg-white p-8 text-sm text-muted">
+        <section className="border border-line bg-white/55 px-5 py-12 text-center text-sm text-muted">
           这个相册暂时还没有图片。
         </section>
       ) : null}
-      <div className="masonry columns-1 sm:columns-2 lg:columns-3">
+      <div className="masonry columns-2 md:columns-3 xl:columns-4">
         {photos.map((photo, index) => (
           <button
             key={photo.id}
-            className="group relative w-full overflow-hidden bg-white text-left"
+            className="group relative w-full overflow-hidden border border-line/70 bg-white text-left"
             onClick={() => setActiveIndex(index)}
             type="button"
           >
+            {!loadedPhotoIds.has(photo.id) ? (
+              <span className="absolute inset-0 animate-pulse bg-line/55" />
+            ) : null}
             <Image
               src={photo.thumbnailUrl}
               alt={photo.imageCode}
               width={photo.width}
               height={photo.height}
-              sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-              className="h-auto w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+              sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw"
+              className={`h-auto w-full object-cover transition duration-500 group-hover:scale-[1.015] ${
+                loadedPhotoIds.has(photo.id) ? "opacity-100" : "opacity-0"
+              }`}
+              onLoad={() => markLoaded(photo.id)}
             />
-            <span className="absolute bottom-3 right-3 bg-white/90 px-2 py-1 text-xs font-medium text-ink">
+            <span className="absolute bottom-2 right-2 bg-white/92 px-2 py-1 text-[11px] font-medium text-ink shadow-sm md:bottom-3 md:right-3 md:text-xs">
               {photo.imageCode}
             </span>
           </button>
@@ -80,7 +96,7 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
 
       {activePhoto ? (
         <div
-          className="fixed inset-0 z-50 bg-ink/95 text-paper"
+          className="fixed inset-0 z-50 bg-[#0d0d0d] text-paper"
           onTouchEnd={(event) =>
             handleTouchEnd(
               event.changedTouches[0].clientX,
@@ -97,7 +113,7 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
         >
           <button
             aria-label="Close image"
-            className="absolute right-4 top-4 grid h-11 w-11 place-items-center border border-white/20"
+            className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center border border-white/25 bg-black/20 text-paper transition hover:bg-white hover:text-ink md:right-5 md:top-5"
             onClick={() => setActiveIndex(null)}
             type="button"
           >
@@ -105,7 +121,7 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
           </button>
           <button
             aria-label="Previous image"
-            className="absolute left-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center border border-white/20 bg-ink/40 md:left-4 md:h-12 md:w-12"
+            className="absolute left-3 top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center border border-white/20 bg-black/25 text-paper transition hover:bg-white hover:text-ink md:left-5 md:h-12 md:w-12"
             onClick={showPrevious}
             type="button"
           >
@@ -113,13 +129,13 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
           </button>
           <button
             aria-label="Next image"
-            className="absolute right-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center border border-white/20 bg-ink/40 md:right-4 md:h-12 md:w-12"
+            className="absolute right-3 top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center border border-white/20 bg-black/25 text-paper transition hover:bg-white hover:text-ink md:right-5 md:h-12 md:w-12"
             onClick={showNext}
             type="button"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
-          <div className="flex h-full items-center justify-center px-4 py-16">
+          <div className="flex h-full items-center justify-center px-12 py-16 md:px-20">
             <Image
               src={activePhoto.imageUrl}
               alt={activePhoto.imageCode}
@@ -129,8 +145,12 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
               priority
             />
           </div>
-          <div className="absolute bottom-4 left-4 text-sm text-paper/80">
-            {activePhoto.imageCode}
+          <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-4 text-xs uppercase tracking-[0.16em] text-paper/75 md:bottom-5 md:left-5 md:right-5">
+            <span>{activePhoto.imageCode}</span>
+            <span>
+              {(activeDisplayIndex + 1).toString().padStart(2, "0")} /{" "}
+              {photos.length.toString().padStart(2, "0")}
+            </span>
           </div>
         </div>
       ) : null}

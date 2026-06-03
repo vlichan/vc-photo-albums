@@ -21,7 +21,7 @@ export function CopyLinkButton({ value }: { value: string }) {
 
   return (
     <button
-      className="inline-flex items-center gap-2 border border-ink px-4 py-2 text-sm text-ink transition hover:bg-ink hover:text-paper"
+      className="inline-flex items-center gap-2 border border-line px-3.5 py-2 text-sm text-ink transition hover:border-ink"
       onClick={copy}
       title={failed ? value : undefined}
       type="button"

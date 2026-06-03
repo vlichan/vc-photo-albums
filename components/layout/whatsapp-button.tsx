@@ -14,8 +14,8 @@ export function WhatsappButton() {
     <a
       href={href}
       aria-label="Contact on WhatsApp"
-      className="fixed right-5 z-40 grid h-12 w-12 place-items-center rounded-full bg-ink text-paper shadow-soft transition hover:scale-105"
-      style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+      className="fixed right-4 z-40 grid h-11 w-11 place-items-center rounded-full border border-white/70 bg-ink/92 text-paper shadow-soft transition hover:bg-black md:right-5 md:h-12 md:w-12"
+      style={{ bottom: "calc(1rem + env(safe-area-inset-bottom))" }}
       target="_blank"
       rel="noreferrer"
     >

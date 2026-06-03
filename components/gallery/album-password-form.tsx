@@ -26,25 +26,32 @@ export function AlbumPasswordForm({ slug }: { slug: string }) {
   }, [router, state.ok]);
 
   return (
-    <section className="mb-8 border border-line bg-white p-5">
-      <div className="max-w-md space-y-4">
-        <div>
-          <h2 className="text-xl font-medium text-ink">请输入相册密码</h2>
-          <p className="mt-1 text-sm text-muted">输入正确密码后即可查看图片。</p>
+    <section className="mx-auto mb-8 max-w-xl border border-line bg-white/60 px-5 py-10 md:px-10 md:py-12">
+      <div className="mx-auto max-w-sm space-y-6 text-center">
+        <div className="space-y-2">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-muted">
+            Private Album
+          </p>
+          <h2 className="text-2xl font-medium text-ink">请输入相册密码</h2>
+          <p className="text-sm leading-6 text-muted">
+            这是一个私密相册。输入密码后，当前设备 24 小时内可免重复输入。
+          </p>
         </div>
         <form action={formAction} className="space-y-4">
           <input name="slug" type="hidden" value={slug} />
-          <label className="block space-y-2">
-            <span className="text-sm text-muted">Password</span>
+          <label className="block space-y-2 text-left">
+            <span className="text-xs uppercase tracking-[0.16em] text-muted">
+              Password
+            </span>
             <input
-              className="w-full border border-line px-4 py-3 outline-none transition focus:border-ink"
+              className="w-full border border-line bg-paper/50 px-4 py-3 text-center outline-none transition focus:border-ink"
               name="password"
               required
               type="password"
             />
           </label>
           <button
-            className="bg-ink px-5 py-3 text-paper disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full bg-ink px-5 py-3 text-paper transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
             disabled={isPending}
             type="submit"
           >
@@ -52,7 +59,7 @@ export function AlbumPasswordForm({ slug }: { slug: string }) {
           </button>
         </form>
         {state.message ? (
-          <p className={state.ok ? "text-sm text-moss" : "text-sm text-red-700"}>
+          <p className={state.ok ? "text-sm text-moss" : "text-sm text-[#9f2a2a]"}>
             {state.message}
           </p>
         ) : null}

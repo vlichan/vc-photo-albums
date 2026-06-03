@@ -19,6 +19,7 @@ type AlbumRow = {
   is_public: boolean;
   created_at: string;
   categories: { name: string } | { name: string }[] | null;
+  photos: { count: number } | { count: number }[] | null;
 };
 
 function formatDate(value: string) {
@@ -36,6 +37,7 @@ function mapCategory(row: CategoryRow): Category {
 
 function mapAlbum(row: AlbumRow): AlbumWithCategory {
   const category = Array.isArray(row.categories) ? row.categories[0] : row.categories;
+  const photoCountRow = Array.isArray(row.photos) ? row.photos[0] : row.photos;
 
   return {
     id: row.id,
@@ -45,6 +47,7 @@ function mapAlbum(row: AlbumRow): AlbumWithCategory {
     coverImage: row.cover_image,
     categoryId: row.category_id ?? "",
     categoryName: category?.name ?? "Uncategorized",
+    photoCount: photoCountRow?.count ?? 0,
     password: row.password ?? undefined,
     isPublic: row.is_public,
     createdAt: formatDate(row.created_at)
@@ -71,8 +74,8 @@ export async function getHomeAlbums(categorySlug?: string) {
     .from("albums")
     .select(
       categorySlug
-        ? "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories!inner(name, slug)"
-        : "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories(name)"
+        ? "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories!inner(name, slug), photos(count)"
+        : "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories(name), photos(count)"
     )
     .not("cover_image", "is", null)
     .order("created_at", { ascending: false });
