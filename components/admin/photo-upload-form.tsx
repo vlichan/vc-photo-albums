@@ -3,7 +3,6 @@
 import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
-import { uploadAlbumPhotos } from "@/app/admin/albums/[id]/actions";
 
 type ImageMetadata = {
   name: string;
@@ -11,8 +10,8 @@ type ImageMetadata = {
   height: number;
 };
 
-const MAX_BATCH_FILES = 8;
-const MAX_BATCH_BYTES = 12 * 1024 * 1024;
+const MAX_BATCH_FILES = 5;
+const MAX_BATCH_BYTES = 8 * 1024 * 1024;
 
 function readImageSize(file: File) {
   return new Promise<ImageMetadata>((resolve) => {
@@ -108,7 +107,18 @@ export function PhotoUploadForm({ albumId }: { albumId: string }) {
         batch.forEach((file) => formData.append("photos", file));
 
         setStatus(`正在上传第 ${index + 1} / ${batches.length} 批，共 ${files.length} 张图片。`);
-        await uploadAlbumPhotos(formData);
+        const response = await fetch(`/api/admin/albums/${albumId}/photos`, {
+          method: "POST",
+          body: formData
+        });
+        const result = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          message?: string;
+        } | null;
+
+        if (!response.ok || !result?.ok) {
+          throw new Error(result?.message || `Upload request failed with ${response.status}.`);
+        }
       }
 
       setStatus(`上传完成，共 ${files.length} 张图片。`);
