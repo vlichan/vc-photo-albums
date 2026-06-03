@@ -1,0 +1,68 @@
+import { NextResponse } from "next/server";
+import {
+  createR2ObjectKey,
+  createR2PresignedPutUrl,
+  getR2PublicUrl
+} from "@/lib/r2/upload";
+import { getAdminAlbumById } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Unknown sign error.";
+}
+
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "请先登录后台后再上传图片。"
+      },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const { id: albumId } = await context.params;
+    const body = (await request.json()) as { fileName?: string; contentType?: string };
+
+    if (!body.fileName) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "fileName is required."
+        },
+        { status: 400 }
+      );
+    }
+
+    const album = await getAdminAlbumById(albumId);
+    const key = createR2ObjectKey(body.fileName, album.slug);
+
+    return NextResponse.json({
+      ok: true,
+      uploadUrl: await createR2PresignedPutUrl(
+        key,
+        body.contentType || "application/octet-stream"
+      ),
+      imageUrl: getR2PublicUrl(key)
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: getErrorMessage(error)
+      },
+      { status: 500 }
+    );
+  }
+}

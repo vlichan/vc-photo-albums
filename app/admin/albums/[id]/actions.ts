@@ -1,15 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getAdminAlbumById, getAdminPhotos } from "@/lib/supabase/admin";
-import { deleteImageFromR2, uploadImageToR2 } from "@/lib/r2/upload";
+import { deleteImageFromR2 } from "@/lib/r2/upload";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-
-type ImageMetadata = {
-  name: string;
-  width: number;
-  height: number;
-};
 
 export type PhotoActionState = {
   ok: boolean;
@@ -23,22 +16,6 @@ type PhotoDeleteRow = {
 };
 
 const SORT_ORDER_STEP = 1000;
-
-function parseMetadata(value: FormDataEntryValue | null) {
-  if (typeof value !== "string" || value.trim() === "") {
-    return [] as ImageMetadata[];
-  }
-
-  try {
-    return JSON.parse(value) as ImageMetadata[];
-  } catch {
-    return [] as ImageMetadata[];
-  }
-}
-
-function getMetadataForFile(metadata: ImageMetadata[], file: File) {
-  return metadata.find((item) => item.name === file.name);
-}
 
 function getRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -69,79 +46,12 @@ function parseJsonStringArray(value: string, key: string) {
   }
 }
 
-function getNextImageCodeStart(photos: { imageCode: string }[]) {
-  return photos.reduce((maxCode, photo) => {
-    const match = photo.imageCode.match(/(\d+)$/);
-    const codeNumber = match ? Number(match[1]) : 0;
-    return Number.isFinite(codeNumber) ? Math.max(maxCode, codeNumber) : maxCode;
-  }, 0) + 1;
-}
-
-function getGeneratedImageCode(codeNumber: number) {
-  return codeNumber.toString().padStart(3, "0");
-}
-
 async function deleteR2Urls(urls: string[]) {
   const uniqueUrls = Array.from(new Set(urls));
 
   for (const url of uniqueUrls) {
     await deleteImageFromR2(url);
   }
-}
-
-export async function uploadAlbumPhotos(formData: FormData) {
-  const albumId = formData.get("album_id");
-
-  if (typeof albumId !== "string" || albumId.trim() === "") {
-    throw new Error("album_id is required.");
-  }
-
-  const files = formData
-    .getAll("photos")
-    .filter((file): file is File => file instanceof File && file.size > 0);
-
-  if (files.length === 0) {
-    throw new Error("Please choose at least one image.");
-  }
-
-  const album = await getAdminAlbumById(albumId);
-  const existingPhotos = await getAdminPhotos(albumId);
-  const metadata = parseMetadata(formData.get("image_metadata"));
-  const supabase = await createSupabaseServerClient();
-  const firstSortOrder =
-    existingPhotos.length > 0
-      ? existingPhotos[0].sortOrder - files.length * SORT_ORDER_STEP
-      : SORT_ORDER_STEP;
-  const firstImageCode = getNextImageCodeStart(existingPhotos);
-
-  const rows = await Promise.all(
-    files.map(async (file, index) => {
-      const imageUrl = await uploadImageToR2(file, album.slug);
-      const imageMetadata = getMetadataForFile(metadata, file);
-      const sortOrder = firstSortOrder + index * SORT_ORDER_STEP;
-
-      return {
-        album_id: album.id,
-        image_url: imageUrl,
-        thumbnail_url: imageUrl,
-        sort_order: sortOrder,
-        image_code: getGeneratedImageCode(firstImageCode + index),
-        mime_type: file.type || "application/octet-stream",
-        file_size: file.size,
-        width: imageMetadata?.width || 1200,
-        height: imageMetadata?.height || 1200
-      };
-    })
-  );
-
-  const { error } = await supabase.from("photos").insert(rows);
-
-  if (error) {
-    throw new Error(`Failed to save photos: ${error.message}`);
-  }
-
-  revalidatePath(`/admin/albums/${album.id}`);
-  revalidatePath(`/album/${album.slug}`);
 }
 
 export async function updatePhotoOrderWithState(

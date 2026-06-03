@@ -1,4 +1,6 @@
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { randomUUID } from "crypto";
 import { getR2Config } from "@/lib/r2/config";
 
 let client: S3Client | null = null;
@@ -25,11 +27,41 @@ function getFileExtension(file: File) {
   return extension ? extension.toLowerCase() : "jpg";
 }
 
+export function createR2ObjectKey(fileName: string, albumSlug: string) {
+  const extension = fileName.split(".").pop()?.toLowerCase() || "jpg";
+  return `albums/${albumSlug}/${randomUUID()}.${extension}`;
+}
+
+export function getR2PublicUrl(key: string) {
+  const config = getR2Config();
+  return `${config.publicBaseUrl.replace(/\/$/, "")}/${key}`;
+}
+
+export async function createR2PresignedPutUrl(
+  key: string,
+  contentType: string,
+  expiresInSeconds = 900
+) {
+  const config = getR2Config();
+
+  return getSignedUrl(
+    getR2Client(),
+    new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      ContentType: contentType || "application/octet-stream"
+    }),
+    {
+      expiresIn: expiresInSeconds
+    }
+  );
+}
+
 export async function uploadImageToR2(file: File, albumSlug: string) {
   const config = getR2Config();
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  const key = `albums/${albumSlug}/${crypto.randomUUID()}.${getFileExtension(file)}`;
+  const key = createR2ObjectKey(file.name, albumSlug);
 
   await getR2Client().send(
     new PutObjectCommand({

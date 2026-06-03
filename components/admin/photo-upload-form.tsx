@@ -10,6 +10,15 @@ type ImageMetadata = {
   height: number;
 };
 
+type UploadedPhoto = {
+  imageUrl: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  width: number;
+  height: number;
+};
+
 const MAX_BATCH_FILES = 5;
 const MAX_BATCH_BYTES = 8 * 1024 * 1024;
 
@@ -67,6 +76,50 @@ function createFileBatches(files: File[]) {
   return batches;
 }
 
+async function readJsonResponse<T>(response: Response) {
+  const result = (await response.json().catch(() => null)) as
+    | (T & { ok?: boolean; message?: string })
+    | null;
+
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.message || `Request failed with ${response.status}.`);
+  }
+
+  return result;
+}
+
+async function getUploadUrl(albumId: string, file: File) {
+  const response = await fetch(`/api/admin/albums/${albumId}/photos/sign`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType: file.type || "application/octet-stream"
+    })
+  });
+
+  return readJsonResponse<{
+    uploadUrl: string;
+    imageUrl: string;
+  }>(response);
+}
+
+async function saveUploadedPhotos(albumId: string, photos: UploadedPhoto[]) {
+  const response = await fetch(`/api/admin/albums/${albumId}/photos/complete`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      photos
+    })
+  });
+
+  await readJsonResponse(response);
+}
+
 export function PhotoUploadForm({ albumId }: { albumId: string }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -99,28 +152,45 @@ export function PhotoUploadForm({ albumId }: { albumId: string }) {
     setErrorMessage("");
 
     try {
+      const uploadedPhotos: UploadedPhoto[] = [];
+      let uploadedCount = 0;
+
       for (let index = 0; index < batches.length; index += 1) {
         const batch = batches[index];
-        const formData = new FormData();
-        formData.append("album_id", albumId);
-        formData.append("image_metadata", JSON.stringify(metadata));
-        batch.forEach((file) => formData.append("photos", file));
-
         setStatus(`正在上传第 ${index + 1} / ${batches.length} 批，共 ${files.length} 张图片。`);
-        const response = await fetch(`/api/admin/albums/${albumId}/photos`, {
-          method: "POST",
-          body: formData
-        });
-        const result = (await response.json().catch(() => null)) as {
-          ok?: boolean;
-          message?: string;
-        } | null;
 
-        if (!response.ok || !result?.ok) {
-          throw new Error(result?.message || `Upload request failed with ${response.status}.`);
+        for (const file of batch) {
+          uploadedCount += 1;
+          setStatus(`正在上传第 ${uploadedCount} / ${files.length} 张图片。`);
+
+          const { uploadUrl, imageUrl } = await getUploadUrl(albumId, file);
+          const uploadResponse = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: {
+              "Content-Type": file.type || "application/octet-stream"
+            },
+            body: file
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error(`R2 上传失败：${uploadResponse.status}`);
+          }
+
+          const imageMetadata = metadata.find((item) => item.name === file.name);
+
+          uploadedPhotos.push({
+            imageUrl,
+            fileName: file.name,
+            mimeType: file.type || "application/octet-stream",
+            fileSize: file.size,
+            width: imageMetadata?.width || 1200,
+            height: imageMetadata?.height || 1200
+          });
         }
       }
 
+      setStatus("正在写入 photos 表。");
+      await saveUploadedPhotos(albumId, uploadedPhotos);
       setStatus(`上传完成，共 ${files.length} 张图片。`);
       setFileCount(0);
       setMetadata([]);
