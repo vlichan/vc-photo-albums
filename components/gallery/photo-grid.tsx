@@ -78,30 +78,35 @@ export function PhotoGrid({
           这个相册暂时还没有图片。
         </section>
       ) : null}
-      <div className="grid grid-cols-2 gap-1.5 min-[430px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 md:gap-2 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
+      <div className="grid grid-cols-2 gap-x-1.5 gap-y-3 min-[430px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 md:gap-x-2 md:gap-y-4 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
         {photos.map((photo, index) => (
           <button
             key={photo.id}
-            className="group relative aspect-square w-full overflow-hidden border border-line/70 bg-white text-left"
+            className="group text-left"
             onClick={() => setActiveIndex(index)}
             type="button"
           >
-            {!loadedPhotoIds.has(photo.id) ? (
-              <span className="absolute inset-0 animate-pulse bg-line/55" />
-            ) : null}
-            <Image
-              src={photo.thumbnailUrl}
-              alt={getDisplayCode(photo, index, startIndex)}
-              fill
-              sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 14vw, (min-width: 1024px) 16vw, (min-width: 768px) 20vw, (min-width: 430px) 33vw, 50vw"
-              className={`object-cover object-center transition duration-500 group-hover:scale-[1.02] ${
-                loadedPhotoIds.has(photo.id) ? "opacity-100" : "opacity-0"
-              }`}
-              onLoad={() => markLoaded(photo.id)}
-            />
-            <span className="absolute bottom-1.5 right-1.5 bg-white/88 px-1.5 py-0.5 text-[10px] font-medium leading-none text-ink shadow-sm md:bottom-2 md:right-2 md:px-2 md:py-1 md:text-[11px]">
-              {getDisplayCode(photo, index, startIndex)}
-            </span>
+            <div className="relative aspect-square w-full overflow-hidden border border-line/70 bg-white">
+              {!loadedPhotoIds.has(photo.id) ? (
+                <span className="absolute inset-0 animate-pulse bg-line/55" />
+              ) : null}
+              <Image
+                src={photo.thumbnailUrl}
+                alt={getDisplayCode(photo, index, startIndex)}
+                fill
+                sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 14vw, (min-width: 1024px) 16vw, (min-width: 768px) 20vw, (min-width: 430px) 33vw, 50vw"
+                className={`object-cover object-center transition duration-500 group-hover:scale-[1.02] ${
+                  loadedPhotoIds.has(photo.id) ? "opacity-100" : "opacity-0"
+                }`}
+                onLoad={() => markLoaded(photo.id)}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-2 px-0.5 py-2 text-[11px] leading-none text-muted md:text-xs">
+              <span className="font-medium text-ink">
+                {getDisplayCode(photo, index, startIndex)}
+              </span>
+              <span>{photo.createdAt}</span>
+            </div>
           </button>
         ))}
       </div>

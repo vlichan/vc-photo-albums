@@ -5,7 +5,6 @@ import Link from "next/link";
 import { CopyLinkButton } from "@/components/ui/copy-link-button";
 import { AlbumPasswordForm } from "@/components/gallery/album-password-form";
 import { PhotoGrid } from "@/components/gallery/photo-grid";
-import { WhatsappButton } from "@/components/layout/whatsapp-button";
 import { getAlbumAccessCookieName } from "@/lib/utils/album-access";
 import {
   getPublicAlbumBySlug,
@@ -49,10 +48,10 @@ function Pagination({
   const nextPage = Math.min(currentPage + 1, totalPages);
 
   return (
-    <nav className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5 text-sm text-muted">
+    <nav className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-t border-line pt-5 text-sm text-muted">
       <Link
         aria-disabled={currentPage === 1}
-        className={`border px-4 py-2.5 transition ${
+        className={`justify-self-end border px-4 py-2.5 transition ${
           currentPage === 1
             ? "pointer-events-none border-line text-muted/45"
             : "border-line text-ink hover:border-ink"
@@ -66,7 +65,7 @@ function Pagination({
       </div>
       <Link
         aria-disabled={currentPage === totalPages}
-        className={`border px-4 py-2.5 transition ${
+        className={`justify-self-start border px-4 py-2.5 transition ${
           currentPage === totalPages
             ? "pointer-events-none border-line text-muted/45"
             : "border-line text-ink hover:border-ink"
@@ -107,8 +106,8 @@ export default async function AlbumPage({ params, searchParams }: AlbumPageProps
     : null;
 
   return (
-    <main className="min-h-screen bg-paper px-3 py-4 md:px-5 md:py-5">
-      <div className="mx-auto max-w-[1800px]">
+    <main className="min-h-screen bg-paper px-4 py-4 sm:px-6 md:px-8 md:py-5">
+      <div className="mx-auto max-w-[1600px]">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/"
@@ -176,7 +175,6 @@ export default async function AlbumPage({ params, searchParams }: AlbumPageProps
           <AlbumPasswordForm slug={album.slug} />
         )}
       </div>
-      <WhatsappButton />
     </main>
   );
 }

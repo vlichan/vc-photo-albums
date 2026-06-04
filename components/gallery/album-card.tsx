@@ -24,19 +24,13 @@ export function AlbumCard({ album }: { album: AlbumWithCategory }) {
           </span>
         ) : null}
       </div>
-      <div className="space-y-3 pt-3">
-        <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.16em] text-muted">
-          <span>{album.categoryName}</span>
-          <span>{album.photoCount ?? 0} photos</span>
-        </div>
-        <div className="space-y-1">
-          <h2 className="text-lg font-medium leading-snug text-ink md:text-xl">
-            {album.title}
-          </h2>
-          <p className="line-clamp-2 text-sm leading-6 text-muted">
-            {album.description || album.createdAt}
-          </p>
-        </div>
+      <div className="flex items-start justify-between gap-3 pt-3">
+        <h2 className="text-lg font-medium leading-snug text-ink md:text-xl">
+          {album.title}
+        </h2>
+        <span className="shrink-0 pt-1 text-xs uppercase tracking-[0.14em] text-muted">
+          {album.photoCount ?? 0} photos
+        </span>
       </div>
     </Link>
   );

@@ -9,9 +9,9 @@ const config: Config = {
     extend: {
       colors: {
         ink: "#111111",
-        paper: "#f7f5f0",
-        line: "#e7e2d8",
-        muted: "#706b64",
+        paper: "#f4f5f5",
+        line: "#d9dddd",
+        muted: "#666666",
         moss: "#4e5c48"
       },
       fontFamily: {

@@ -5,7 +5,7 @@
 :root {
   color-scheme: light;
   --font-sans: Inter, "Helvetica Neue", Arial, sans-serif;
-  background: #f7f5f0;
+  background: #f4f5f5;
   color: #111111;
 }
 
@@ -19,7 +19,7 @@ html {
 
 body {
   margin: 0;
-  background: #f7f5f0;
+  background: #f4f5f5;
   color: #111111;
   font-family: var(--font-sans);
 }
@@ -38,7 +38,7 @@ select {
 
 ::selection {
   background: #111111;
-  color: #f7f5f0;
+  color: #f4f5f5;
 }
 
 .masonry {
