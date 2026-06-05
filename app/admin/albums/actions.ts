@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { deleteImageFromR2 } from "@/lib/r2/upload";
 
+type AlbumActionResult = {
+  ok: boolean;
+  message?: string;
+};
+
 type AlbumPhotoDeleteRow = {
   id: string;
   image_url: string;
@@ -26,15 +31,37 @@ function getOptionalString(formData: FormData, key: string) {
 }
 
 function getAlbumPayload(formData: FormData) {
+  const slug = getRequiredString(formData, "slug");
+
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    throw new Error("链接标识只能使用小写英文、数字和短横线，例如 chanel-shoes-2026。");
+  }
+
   return {
     title: getRequiredString(formData, "title"),
-    slug: getRequiredString(formData, "slug"),
+    slug,
     description: getOptionalString(formData, "description") ?? "",
     cover_image: getOptionalString(formData, "cover_image"),
     category_id: getOptionalString(formData, "category_id"),
     password: getOptionalString(formData, "password"),
     is_public: formData.get("is_public") === "on"
   };
+}
+
+function getAlbumErrorMessage(error: { code?: string; message?: string }) {
+  if (error.code === "23505") {
+    return "保存失败：这个链接标识已经存在，请换一个 slug，例如 chanel-shoes-2026。";
+  }
+
+  if (error.code === "23503") {
+    return "保存失败：选择的分类不存在，请刷新页面后重新选择分类。";
+  }
+
+  if (error.message?.includes("invalid input syntax")) {
+    return "保存失败：表单里有无效数据，请检查分类、链接标识或 URL。";
+  }
+
+  return `保存失败：${error.message ?? "未知数据库错误。"}`;
 }
 
 async function deleteR2Urls(urls: string[]) {
@@ -45,34 +72,50 @@ async function deleteR2Urls(urls: string[]) {
   }
 }
 
-export async function createAlbum(formData: FormData) {
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.from("albums").insert(getAlbumPayload(formData));
+export async function createAlbum(formData: FormData): Promise<AlbumActionResult> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.from("albums").insert(getAlbumPayload(formData));
 
-  if (error) {
-    throw new Error(`相册创建失败：${error.message}`);
+    if (error) {
+      return { ok: false, message: getAlbumErrorMessage(error) };
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath("/admin/albums");
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "创建失败：未知错误。"
+    };
   }
-
-  revalidatePath("/");
-  revalidatePath("/admin");
-  revalidatePath("/admin/albums");
 }
 
-export async function updateAlbum(formData: FormData) {
-  const supabase = await createSupabaseServerClient();
-  const id = getRequiredString(formData, "id");
-  const { error } = await supabase
-    .from("albums")
-    .update(getAlbumPayload(formData))
-    .eq("id", id);
+export async function updateAlbum(formData: FormData): Promise<AlbumActionResult> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const id = getRequiredString(formData, "id");
+    const { error } = await supabase
+      .from("albums")
+      .update(getAlbumPayload(formData))
+      .eq("id", id);
 
-  if (error) {
-    throw new Error(`相册保存失败：${error.message}`);
+    if (error) {
+      return { ok: false, message: getAlbumErrorMessage(error) };
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath("/admin/albums");
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "保存失败：未知错误。"
+    };
   }
-
-  revalidatePath("/");
-  revalidatePath("/admin");
-  revalidatePath("/admin/albums");
 }
 
 export async function deleteAlbum(formData: FormData) {

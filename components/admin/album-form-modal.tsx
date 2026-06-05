@@ -26,10 +26,11 @@ export function AlbumFormModal({ album, categories, trigger }: AlbumFormModalPro
 
     startTransition(async () => {
       try {
-        if (isEditing) {
-          await updateAlbum(formData);
-        } else {
-          await createAlbum(formData);
+        const result = isEditing ? await updateAlbum(formData) : await createAlbum(formData);
+
+        if (!result.ok) {
+          setErrorMessage(result.message ?? "保存失败，请检查填写内容。");
+          return;
         }
 
         setIsOpen(false);
