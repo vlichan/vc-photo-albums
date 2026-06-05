@@ -6,6 +6,7 @@ type CategoryRow = {
   name: string;
   slug: string;
   created_at: string;
+  albums?: { count: number } | { count: number }[] | null;
 };
 
 type AlbumRow = {
@@ -19,6 +20,7 @@ type AlbumRow = {
   is_public: boolean;
   created_at: string;
   categories: { name: string } | { name: string }[] | null;
+  photos?: { count: number } | { count: number }[] | null;
 };
 
 type PhotoRow = {
@@ -40,16 +42,21 @@ function formatDate(value: string) {
 }
 
 function mapCategory(row: CategoryRow): Category {
+  const albumCount = Array.isArray(row.albums) ? row.albums[0] : row.albums;
+
   return {
     id: row.id,
     name: row.name,
     slug: row.slug,
-    createdAt: formatDate(row.created_at)
+    createdAt: formatDate(row.created_at),
+    albumCount: albumCount?.count ?? 0,
+    sortOrder: null
   };
 }
 
 function mapAlbum(row: AlbumRow): AlbumWithCategory {
   const category = Array.isArray(row.categories) ? row.categories[0] : row.categories;
+  const photoCount = Array.isArray(row.photos) ? row.photos[0] : row.photos;
 
   return {
     id: row.id,
@@ -58,7 +65,8 @@ function mapAlbum(row: AlbumRow): AlbumWithCategory {
     description: row.description ?? "",
     coverImage: row.cover_image ?? "",
     categoryId: row.category_id ?? "",
-    categoryName: category?.name ?? "Uncategorized",
+    categoryName: category?.name ?? "未分类",
+    photoCount: photoCount?.count ?? 0,
     password: row.password ?? undefined,
     isPublic: row.is_public,
     createdAt: formatDate(row.created_at)
@@ -85,27 +93,35 @@ export async function getAdminCategories() {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, slug, created_at")
+    .select("id, name, slug, created_at, albums(count)")
     .order("created_at", { ascending: false });
 
   if (error) {
-    throw new Error(`Failed to load categories: ${error.message}`);
+    throw new Error(`分类读取失败：${error.message}`);
   }
 
   return (data ?? []).map((row) => mapCategory(row as CategoryRow));
 }
 
-export async function getAdminAlbums() {
+export async function getAdminAlbums(categorySlug?: string) {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  const query = supabase
     .from("albums")
     .select(
-      "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories(name)"
+      categorySlug
+        ? "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories!inner(name, slug), photos(count)"
+        : "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories(name), photos(count)"
     )
     .order("created_at", { ascending: false });
 
+  if (categorySlug) {
+    query.eq("categories.slug", categorySlug);
+  }
+
+  const { data, error } = await query;
+
   if (error) {
-    throw new Error(`Failed to load albums: ${error.message}`);
+    throw new Error(`相册读取失败：${error.message}`);
   }
 
   return (data ?? []).map((row) => mapAlbum(row as AlbumRow));
@@ -122,7 +138,7 @@ export async function getAdminAlbumById(id: string) {
     .single();
 
   if (error) {
-    throw new Error(`Failed to load album: ${error.message}`);
+    throw new Error(`相册读取失败：${error.message}`);
   }
 
   return mapAlbum(data as AlbumRow);
@@ -139,7 +155,7 @@ export async function getAdminPhotos(albumId: string) {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    throw new Error(`Failed to load photos: ${error.message}`);
+    throw new Error(`图片读取失败：${error.message}`);
   }
 
   return (data ?? []).map((row) => mapPhoto(row as PhotoRow));
@@ -154,15 +170,15 @@ export async function getAdminCounts() {
   ]);
 
   if (albumsResult.error) {
-    throw new Error(`Failed to count albums: ${albumsResult.error.message}`);
+    throw new Error(`相册数量读取失败：${albumsResult.error.message}`);
   }
 
   if (categoriesResult.error) {
-    throw new Error(`Failed to count categories: ${categoriesResult.error.message}`);
+    throw new Error(`分类数量读取失败：${categoriesResult.error.message}`);
   }
 
   if (photosResult.error) {
-    throw new Error(`Failed to count photos: ${photosResult.error.message}`);
+    throw new Error(`图片数量读取失败：${photosResult.error.message}`);
   }
 
   return {

@@ -41,7 +41,7 @@ export function LoginForm() {
       onSubmit={handleSubmit}
     >
       <label className="block space-y-2">
-        <span className="text-sm text-muted">Email</span>
+        <span className="text-sm text-muted">邮箱</span>
         <input
           className="w-full border border-line px-4 py-3 outline-none transition focus:border-ink"
           onChange={(event) => setEmail(event.target.value)}
@@ -52,7 +52,7 @@ export function LoginForm() {
         />
       </label>
       <label className="block space-y-2">
-        <span className="text-sm text-muted">Password</span>
+        <span className="text-sm text-muted">密码</span>
         <input
           className="w-full border border-line px-4 py-3 outline-none transition focus:border-ink"
           onChange={(event) => setPassword(event.target.value)}

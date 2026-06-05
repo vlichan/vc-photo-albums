@@ -4,16 +4,23 @@ import { deleteCategory } from "@/app/admin/categories/actions";
 
 export function DeleteCategoryForm({
   categoryId,
-  categoryName
+  categoryName,
+  albumCount = 0
 }: {
   categoryId: string;
   categoryName: string;
+  albumCount?: number;
 }) {
   return (
     <form
       action={deleteCategory}
       onSubmit={(event) => {
-        if (!window.confirm(`确定删除分类「${categoryName}」吗？相册会变成未分类。`)) {
+        const message =
+          albumCount > 0
+            ? `确定删除分类「${categoryName}」吗？当前分类下有 ${albumCount} 个相册，删除后这些相册会变成未分类。`
+            : `确定删除分类「${categoryName}」吗？`;
+
+        if (!window.confirm(message)) {
           event.preventDefault();
         }
       }}

@@ -155,7 +155,7 @@ export async function updatePhotoOrderWithState(
       message: "排序已保存，图片编号保持不变。"
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown sort error.";
+    const message = error instanceof Error ? error.message : "未知排序错误。";
 
     return {
       ok: false,
@@ -212,7 +212,7 @@ export async function deleteAlbumPhotosWithState(
         photos.flatMap((photo) => [photo.image_url, photo.thumbnail_url])
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown R2 delete error.";
+      const message = error instanceof Error ? error.message : "未知 R2 删除错误。";
 
       return {
         ok: false,
@@ -241,7 +241,7 @@ export async function deleteAlbumPhotosWithState(
       message: `已删除 ${photoIds.length} 张图片。`
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown delete error.";
+    const message = error instanceof Error ? error.message : "未知删除错误。";
 
     return {
       ok: false,
@@ -285,7 +285,7 @@ export async function setAlbumCoverWithState(
       message: "封面已更新。"
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown cover error.";
+    const message = error instanceof Error ? error.message : "未知封面设置错误。";
 
     return {
       ok: false,

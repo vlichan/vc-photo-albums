@@ -24,7 +24,7 @@ export async function createCategory(formData: FormData) {
   });
 
   if (error) {
-    throw new Error(`Failed to create category: ${error.message}`);
+    throw new Error(`分类创建失败：${error.message}`);
   }
 
   revalidatePath("/");
@@ -48,7 +48,7 @@ export async function updateCategory(formData: FormData) {
     .eq("id", id);
 
   if (error) {
-    throw new Error(`Failed to update category: ${error.message}`);
+    throw new Error(`分类保存失败：${error.message}`);
   }
 
   revalidatePath("/");
@@ -64,7 +64,7 @@ export async function deleteCategory(formData: FormData) {
   const { error } = await supabase.from("categories").delete().eq("id", id);
 
   if (error) {
-    throw new Error(`Failed to delete category: ${error.message}`);
+    throw new Error(`分类删除失败：${error.message}`);
   }
 
   revalidatePath("/");

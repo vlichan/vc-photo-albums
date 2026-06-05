@@ -11,11 +11,11 @@ export default function AdminLoginPage() {
           className="inline-flex items-center gap-2 text-sm text-muted transition hover:text-ink"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to albums
+          返回相册
         </Link>
         <div className="mt-16 max-w-xl lg:mt-0">
           <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-moss">
-            Admin
+            后台
           </p>
           <h1 className="text-4xl font-medium leading-tight text-ink md:text-6xl">
             后台登录

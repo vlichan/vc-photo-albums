@@ -1,101 +1,87 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { AdminShell } from "@/components/admin/admin-shell";
+import { CategoryFormModal } from "@/components/admin/category-form-modal";
 import { getAdminCategories } from "@/lib/supabase/admin";
-import {
-  createCategory,
-  updateCategory
-} from "@/app/admin/categories/actions";
 import { DeleteCategoryForm } from "@/components/admin/delete-category-form";
 
 export default async function AdminCategoriesPage() {
   const categories = await getAdminCategories();
 
   return (
-    <main className="min-h-screen bg-paper px-5 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex items-center justify-between gap-4">
-          <div>
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-2 text-sm text-muted transition hover:text-ink"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Link>
-            <h1 className="mt-3 text-4xl font-medium text-ink">分类管理</h1>
-          </div>
-          <Link href="/admin/albums" className="border border-ink px-4 py-2 text-sm text-ink">
+    <AdminShell
+      active="categories"
+      actions={
+        <>
+          <CategoryFormModal
+            trigger={
+              <span className="inline-flex border border-ink bg-ink px-3.5 py-2 text-sm text-paper">
+                新建分类
+              </span>
+            }
+          />
+          <Link
+            href="/admin/albums"
+            className="border border-line px-3.5 py-2 text-sm text-muted transition hover:border-ink hover:text-ink"
+          >
             相册管理
           </Link>
-        </div>
-
-        <section className="mb-8 border border-line bg-white p-5">
-          <h2 className="mb-4 text-xl font-medium text-ink">创建分类</h2>
-          <form action={createCategory} className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
-            <label className="space-y-2">
-              <span className="block text-sm text-muted">Name</span>
-              <input
-                className="w-full border border-line px-4 py-3 outline-none transition focus:border-ink"
-                name="name"
-                placeholder="Bags"
-                required
-              />
-            </label>
-            <label className="space-y-2">
-              <span className="block text-sm text-muted">Slug</span>
-              <input
-                className="w-full border border-line px-4 py-3 outline-none transition focus:border-ink"
-                name="slug"
-                placeholder="bags"
-                required
-              />
-            </label>
-            <button className="self-end bg-ink px-5 py-3 text-paper" type="submit">
-              创建
-            </button>
-          </form>
-        </section>
-
+        </>
+      }
+      description="创建和维护前台首页使用的相册分类。"
+      title="分类管理"
+    >
         <section className="border border-line bg-white">
-          <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-4 border-b border-line px-4 py-3 text-xs uppercase tracking-[0.16em] text-muted">
-            <span>Name</span>
-            <span>Slug</span>
-            <span>Save</span>
-            <span>Delete</span>
+          <div className="grid grid-cols-[1.2fr_1fr_0.8fr_0.9fr_0.9fr_1.4fr] gap-4 border-b border-line px-4 py-3 text-xs uppercase tracking-[0.16em] text-muted">
+            <span>分类名称</span>
+            <span>slug</span>
+            <span>排序值</span>
+            <span>相册数量</span>
+            <span>创建时间</span>
+            <span>操作</span>
           </div>
           {categories.length === 0 ? (
             <div className="px-4 py-8 text-sm text-muted">
-              暂无分类。先创建 Bags、Shoes 或 New Arrivals 这样的基础分类。
+              暂无分类。点击右上角“新建分类”开始创建。
             </div>
           ) : null}
           {categories.map((category) => (
             <div
               key={category.id}
-              className="grid gap-3 border-b border-line px-4 py-4 last:border-b-0 lg:grid-cols-[1fr_1fr_auto_auto]"
+              className="grid gap-4 border-b border-line px-4 py-4 text-sm last:border-b-0 lg:grid-cols-[1.2fr_1fr_0.8fr_0.9fr_0.9fr_1.4fr] lg:items-center"
             >
-              <form action={updateCategory} className="contents">
-                <input name="id" type="hidden" value={category.id} />
-                <input
-                  className="w-full border border-line px-3 py-2 outline-none transition focus:border-ink"
-                  name="name"
-                  required
-                  defaultValue={category.name}
+              <div>
+                <p className="font-medium text-ink">{category.name}</p>
+              </div>
+              <p className="text-muted">/{category.slug}</p>
+              <p className="text-muted">
+                {typeof category.sortOrder === "number" ? category.sortOrder : "未启用"}
+              </p>
+              <p className="text-muted">{category.albumCount ?? 0}</p>
+              <p className="text-muted">{category.createdAt}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <CategoryFormModal
+                  category={category}
+                  trigger={
+                    <span className="inline-flex border border-line px-3 py-2 text-sm text-muted transition hover:border-ink hover:text-ink">
+                      编辑
+                    </span>
+                  }
                 />
-                <input
-                  className="w-full border border-line px-3 py-2 outline-none transition focus:border-ink"
-                  name="slug"
-                  required
-                  defaultValue={category.slug}
+                <Link
+                  href={`/admin/albums?category=${category.slug}`}
+                  className="border border-line px-3 py-2 text-sm text-muted transition hover:border-ink hover:text-ink"
+                >
+                  查看相册
+                </Link>
+                <DeleteCategoryForm
+                  albumCount={category.albumCount ?? 0}
+                  categoryId={category.id}
+                  categoryName={category.name}
                 />
-                <button className="border border-ink px-4 py-2 text-sm text-ink" type="submit">
-                  保存
-                </button>
-              </form>
-              <DeleteCategoryForm categoryId={category.id} categoryName={category.name} />
+              </div>
             </div>
           ))}
         </section>
-      </div>
-    </main>
+    </AdminShell>
   );
 }

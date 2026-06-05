@@ -1,6 +1,6 @@
 "use client";
 
-import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
+import { type ChangeEvent, type DragEvent, type FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 
@@ -82,7 +82,7 @@ async function readJsonResponse<T>(response: Response) {
     | null;
 
   if (!response.ok || !result?.ok) {
-    throw new Error(result?.message || `Request failed with ${response.status}.`);
+    throw new Error(result?.message || `请求失败：${response.status}`);
   }
 
   return result;
@@ -123,24 +123,72 @@ async function saveUploadedPhotos(albumId: string, photos: UploadedPhoto[]) {
 export function PhotoUploadForm({ albumId }: { albumId: string }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [metadata, setMetadata] = useState<ImageMetadata[]>([]);
   const [fileCount, setFileCount] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [status, setStatus] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [successCount, setSuccessCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
 
-  async function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
-    setFileCount(files.length);
+  async function setFiles(files: File[]) {
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    setSelectedFiles(imageFiles);
+    setSuccessCount(0);
+    setFailedCount(0);
+    setFileCount(imageFiles.length);
     setStatus("");
     setErrorMessage("");
-    setMetadata(await Promise.all(files.map(readImageSize)));
+    setMetadata(await Promise.all(imageFiles.map(readImageSize)));
+  }
+
+  async function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
+    await setFiles(Array.from(event.target.files ?? []));
+  }
+
+  async function handleDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+
+    if (isUploading) {
+      return;
+    }
+
+    await setFiles(Array.from(event.dataTransfer.files));
+  }
+
+  function handleDragOver(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+  }
+
+  function resetUploadState({
+    keepStatus = false,
+    keepStats = false
+  }: {
+    keepStatus?: boolean;
+    keepStats?: boolean;
+  } = {}) {
+    setSelectedFiles([]);
+    setFileCount(0);
+    if (!keepStatus) {
+      setStatus("");
+    }
+    setErrorMessage("");
+    if (!keepStats) {
+      setSuccessCount(0);
+      setFailedCount(0);
+    }
+    setMetadata([]);
+
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const files = Array.from(inputRef.current?.files ?? []);
+    const files = selectedFiles;
 
     if (files.length === 0) {
       setErrorMessage("请先选择图片。");
@@ -150,6 +198,8 @@ export function PhotoUploadForm({ albumId }: { albumId: string }) {
     const batches = createFileBatches(files);
     setIsUploading(true);
     setErrorMessage("");
+    setSuccessCount(0);
+    setFailedCount(0);
 
     try {
       const uploadedPhotos: UploadedPhoto[] = [];
@@ -186,22 +236,19 @@ export function PhotoUploadForm({ albumId }: { albumId: string }) {
             width: imageMetadata?.width || 1200,
             height: imageMetadata?.height || 1200
           });
+          setSuccessCount((current) => current + 1);
         }
       }
 
       setStatus("正在写入 photos 表。");
       await saveUploadedPhotos(albumId, uploadedPhotos);
       setStatus(`上传完成，共 ${files.length} 张图片。`);
-      setFileCount(0);
-      setMetadata([]);
-
-      if (inputRef.current) {
-        inputRef.current.value = "";
-      }
+      resetUploadState({ keepStatus: true, keepStats: true });
 
       router.refresh();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown upload error.";
+      const message = error instanceof Error ? error.message : "未知上传错误。";
+      setFailedCount((current) => current + 1);
       setErrorMessage(`上传失败：${message}`);
     } finally {
       setIsUploading(false);
@@ -210,20 +257,25 @@ export function PhotoUploadForm({ albumId }: { albumId: string }) {
 
   return (
     <form
-      className="space-y-4 border border-line bg-white p-5"
+      className="space-y-4 border border-line bg-white p-4"
       onSubmit={handleSubmit}
     >
       <div>
         <h2 className="text-xl font-medium text-ink">上传图片</h2>
         <p className="mt-1 text-sm text-muted">
-          选择图片后会分批上传到 Cloudflare R2，并写入 photos 表。
+          拖拽图片到这里，或选择多张图片上传。
         </p>
       </div>
-      <label className="block space-y-2">
-        <span className="text-sm text-muted">Images</span>
+      <label
+        className="block cursor-pointer border border-dashed border-line bg-paper/70 px-4 py-6 text-center transition hover:border-ink"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        <span className="block text-sm font-medium text-ink">拖拽图片到这里</span>
+        <span className="mt-1 block text-sm text-muted">支持多选，上传时自动分批直传 R2</span>
         <input
           accept="image/*"
-          className="w-full border border-line px-4 py-3 outline-none transition focus:border-ink"
+          className="mt-4 w-full border border-line bg-white px-4 py-3 outline-none transition focus:border-ink"
           disabled={isUploading}
           multiple
           name="photos"
@@ -232,12 +284,23 @@ export function PhotoUploadForm({ albumId }: { albumId: string }) {
           required
           type="file"
         />
+        <span className="mt-3 block truncate text-sm text-muted">
+          {selectedFiles.length > 0
+            ? selectedFiles.map((file) => file.name).join("、")
+            : "尚未选择文件"}
+        </span>
       </label>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <p className="text-sm text-muted">
-            {fileCount > 0 ? `${fileCount} images selected` : "No images selected"}
+            {fileCount > 0 ? `已选择 ${fileCount} 张图片` : "未选择图片"}
           </p>
+          {isUploading || successCount > 0 || failedCount > 0 ? (
+            <p className="text-sm text-muted">
+              成功 {successCount} / 失败 {failedCount} / 进度{" "}
+              {fileCount > 0 ? Math.round(((successCount + failedCount) / fileCount) * 100) : 0}%
+            </p>
+          ) : null}
           {status ? <p className="text-sm text-moss">{status}</p> : null}
           {errorMessage ? <p className="text-sm text-red-700">{errorMessage}</p> : null}
         </div>

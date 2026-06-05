@@ -3,6 +3,8 @@ export type Category = {
   name: string;
   slug: string;
   createdAt: string;
+  albumCount?: number;
+  sortOrder?: number | null;
 };
 
 export type Album = {
