@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "migrate:r2-url": "node --experimental-strip-types scripts/migrate-r2-public-url.ts",
     "lint": "next lint"
   },
   "dependencies": {

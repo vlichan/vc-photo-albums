@@ -120,6 +120,56 @@ R2 需要：
 
 当前缩略图字段暂时与原图 URL 相同，后续如要做真实缩略图生成，再单独扩展。
 
+## R2 图片公开域名迁移
+
+如果 R2 从临时公开域名切换到自定义域名，可以使用一次性脚本只更新 Supabase `photos` 表里的 `image_url` 和 `thumbnail_url`。
+
+脚本不会修改数据库结构，不会删除任何 R2 文件，也不会修改上传、删除、排序、编号逻辑。它只保留原 URL 的路径部分，把旧域名替换成新域名。
+
+需要的环境变量：
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+OLD_R2_PUBLIC_URL=https://old-r2-domain.example.com
+NEW_R2_PUBLIC_URL=https://img.maggieshop.vip
+```
+
+注意：
+
+- `SUPABASE_SERVICE_ROLE_KEY` 只能放在本地脚本环境或服务端环境中。
+- 不要把 `SUPABASE_SERVICE_ROLE_KEY` 暴露到浏览器端。
+- 不要提交真实 key 到 GitHub。
+- `NEW_R2_PUBLIC_URL` 默认是 `https://img.maggieshop.vip`，但建议显式配置。
+
+先预览，不写入数据库：
+
+```bash
+npm run migrate:r2-url -- --dry-run
+```
+
+确认 dry-run 输出无误后，再执行：
+
+```bash
+npm run migrate:r2-url -- --apply --confirm
+```
+
+dry-run 会输出：
+
+- photos 总记录数
+- `image_url` 将替换的数量
+- `thumbnail_url` 将替换的数量
+- 至少 5 条替换前后示例
+- 空 URL、已经是新域名、其他域名的跳过数量
+
+apply 会再次打印确认信息，并输出成功更新数量和失败记录。
+
+回滚建议：
+
+1. 执行 apply 前，在 Supabase 里导出或备份 `photos` 表。
+2. 如果需要回滚，把 `OLD_R2_PUBLIC_URL` 和 `NEW_R2_PUBLIC_URL` 对调，再先运行 dry-run。
+3. dry-run 确认无误后，再运行 apply。
+
 ## 相册密码说明
 
 当前相册密码使用 `albums.password` 字段，属于 MVP 简单实现。
