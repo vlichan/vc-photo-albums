@@ -73,6 +73,7 @@ export async function getPublicAlbumBySlug(slug: string) {
       "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories(name)"
     )
     .eq("slug", slug)
+    .eq("is_public", true)
     .single();
 
   if (error || !data) {

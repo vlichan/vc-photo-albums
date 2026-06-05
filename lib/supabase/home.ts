@@ -77,6 +77,7 @@ export async function getHomeAlbums(categorySlug?: string) {
         ? "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories!inner(name, slug), photos(count)"
         : "id, title, slug, description, cover_image, category_id, password, is_public, created_at, categories(name), photos(count)"
     )
+    .eq("is_public", true)
     .not("cover_image", "is", null)
     .order("created_at", { ascending: false });
 

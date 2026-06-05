@@ -138,7 +138,7 @@ export function AlbumFormModal({ album, categories, trigger }: AlbumFormModalPro
               <label className="flex items-center gap-3 self-end py-3 text-sm text-muted">
                 <input
                   className="h-4 w-4"
-                  defaultChecked={album?.isPublic ?? false}
+                  defaultChecked={album?.isPublic ?? true}
                   name="is_public"
                   type="checkbox"
                 />
