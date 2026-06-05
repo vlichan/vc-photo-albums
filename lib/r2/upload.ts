@@ -77,13 +77,22 @@ export async function uploadImageToR2(file: File, albumSlug: string) {
 
 export async function deleteImageFromR2(imageUrl: string) {
   const config = getR2Config();
-  const publicBaseUrl = config.publicBaseUrl.replace(/\/$/, "");
+  let key = "";
 
-  if (!imageUrl.startsWith(`${publicBaseUrl}/`)) {
-    throw new Error("Image URL does not match R2 public base URL.");
+  try {
+    const url = new URL(imageUrl);
+    key = decodeURIComponent(url.pathname.replace(/^\/+/, ""));
+  } catch {
+    const publicBaseUrl = config.publicBaseUrl.replace(/\/$/, "");
+
+    if (imageUrl.startsWith(`${publicBaseUrl}/`)) {
+      key = decodeURIComponent(imageUrl.slice(publicBaseUrl.length + 1));
+    }
   }
 
-  const key = decodeURIComponent(imageUrl.slice(publicBaseUrl.length + 1));
+  if (!key.startsWith("albums/")) {
+    throw new Error("Image URL does not contain a valid R2 object key.");
+  }
 
   await getR2Client().send(
     new DeleteObjectCommand({
