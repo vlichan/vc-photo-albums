@@ -12,6 +12,7 @@ type ImageMetadata = {
 
 type UploadedPhoto = {
   imageUrl: string;
+  thumbnailUrl: string;
   fileName: string;
   mimeType: string;
   fileSize: number;
@@ -19,8 +20,16 @@ type UploadedPhoto = {
   height: number;
 };
 
+type ThumbnailFile = {
+  blob: Blob;
+  fileName: string;
+  mimeType: string;
+};
+
 const MAX_BATCH_FILES = 5;
 const MAX_BATCH_BYTES = 8 * 1024 * 1024;
+const THUMBNAIL_MAX_EDGE = 500;
+const THUMBNAIL_QUALITY = 0.78;
 
 function readImageSize(file: File) {
   return new Promise<ImageMetadata>((resolve) => {
@@ -76,6 +85,65 @@ function createFileBatches(files: File[]) {
   return batches;
 }
 
+function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality: number) {
+  return new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, mimeType, quality);
+  });
+}
+
+async function createThumbnail(file: File): Promise<ThumbnailFile> {
+  const image = new Image();
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error(`缩略图生成失败：无法读取图片 ${file.name}`));
+      image.src = objectUrl;
+    });
+
+    const originalWidth = image.naturalWidth || THUMBNAIL_MAX_EDGE;
+    const originalHeight = image.naturalHeight || THUMBNAIL_MAX_EDGE;
+    const scale = Math.min(1, THUMBNAIL_MAX_EDGE / Math.max(originalWidth, originalHeight));
+    const width = Math.max(1, Math.round(originalWidth * scale));
+    const height = Math.max(1, Math.round(originalHeight * scale));
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      throw new Error("缩略图生成失败：当前浏览器不支持 Canvas。");
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+    context.drawImage(image, 0, 0, width, height);
+
+    const webpBlob = await canvasToBlob(canvas, "image/webp", THUMBNAIL_QUALITY);
+
+    if (webpBlob?.type === "image/webp" && webpBlob.size > 0) {
+      return {
+        blob: webpBlob,
+        fileName: `${file.name.replace(/\.[^.]+$/, "")}-thumb.webp`,
+        mimeType: "image/webp"
+      };
+    }
+
+    const jpegBlob = await canvasToBlob(canvas, "image/jpeg", THUMBNAIL_QUALITY);
+
+    if (!jpegBlob || jpegBlob.size === 0) {
+      throw new Error("缩略图生成失败：无法导出 WebP 或 JPEG。");
+    }
+
+    return {
+      blob: jpegBlob,
+      fileName: `${file.name.replace(/\.[^.]+$/, "")}-thumb.jpg`,
+      mimeType: "image/jpeg"
+    };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 async function readJsonResponse<T>(response: Response) {
   const result = (await response.json().catch(() => null)) as
     | (T & { ok?: boolean; message?: string })
@@ -88,15 +156,21 @@ async function readJsonResponse<T>(response: Response) {
   return result;
 }
 
-async function getUploadUrl(albumId: string, file: File) {
+async function getUploadUrl(
+  albumId: string,
+  fileName: string,
+  contentType: string,
+  uploadType: "image" | "thumbnail"
+) {
   const response = await fetch(`/api/admin/albums/${albumId}/photos/sign`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      fileName: file.name,
-      contentType: file.type || "application/octet-stream"
+      fileName,
+      contentType,
+      uploadType
     })
   });
 
@@ -104,6 +178,20 @@ async function getUploadUrl(albumId: string, file: File) {
     uploadUrl: string;
     imageUrl: string;
   }>(response);
+}
+
+async function uploadToR2(uploadUrl: string, body: Blob, contentType: string) {
+  const uploadResponse = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": contentType
+    },
+    body
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error(`R2 上传失败：${uploadResponse.status}`);
+  }
 }
 
 async function saveUploadedPhotos(albumId: string, photos: UploadedPhoto[]) {
@@ -203,6 +291,7 @@ export function PhotoUploadForm({ albumId }: { albumId: string }) {
 
     try {
       const uploadedPhotos: UploadedPhoto[] = [];
+      const thumbnailWarnings: string[] = [];
       let uploadedCount = 0;
 
       for (let index = 0; index < batches.length; index += 1) {
@@ -213,25 +302,43 @@ export function PhotoUploadForm({ albumId }: { albumId: string }) {
           uploadedCount += 1;
           setStatus(`正在上传第 ${uploadedCount} / ${files.length} 张图片。`);
 
-          const { uploadUrl, imageUrl } = await getUploadUrl(albumId, file);
-          const uploadResponse = await fetch(uploadUrl, {
-            method: "PUT",
-            headers: {
-              "Content-Type": file.type || "application/octet-stream"
-            },
-            body: file
-          });
-
-          if (!uploadResponse.ok) {
-            throw new Error(`R2 上传失败：${uploadResponse.status}`);
-          }
+          const originalMimeType = file.type || "application/octet-stream";
+          const { uploadUrl, imageUrl } = await getUploadUrl(
+            albumId,
+            file.name,
+            originalMimeType,
+            "image"
+          );
+          await uploadToR2(uploadUrl, file, originalMimeType);
 
           const imageMetadata = metadata.find((item) => item.name === file.name);
+          let thumbnailUrl = imageUrl;
+
+          try {
+            const thumbnail = await createThumbnail(file);
+            const thumbnailUpload = await getUploadUrl(
+              albumId,
+              thumbnail.fileName,
+              thumbnail.mimeType,
+              "thumbnail"
+            );
+
+            await uploadToR2(
+              thumbnailUpload.uploadUrl,
+              thumbnail.blob,
+              thumbnail.mimeType
+            );
+            thumbnailUrl = thumbnailUpload.imageUrl;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "未知缩略图错误。";
+            thumbnailWarnings.push(`${file.name}: ${message}`);
+          }
 
           uploadedPhotos.push({
             imageUrl,
+            thumbnailUrl,
             fileName: file.name,
-            mimeType: file.type || "application/octet-stream",
+            mimeType: originalMimeType,
             fileSize: file.size,
             width: imageMetadata?.width || 1200,
             height: imageMetadata?.height || 1200
@@ -244,6 +351,14 @@ export function PhotoUploadForm({ albumId }: { albumId: string }) {
       await saveUploadedPhotos(albumId, uploadedPhotos);
       setStatus(`上传完成，共 ${files.length} 张图片。`);
       resetUploadState({ keepStatus: true, keepStats: true });
+
+      if (thumbnailWarnings.length > 0) {
+        setErrorMessage(
+          `部分缩略图生成失败，已临时使用原图作为缩略图：${thumbnailWarnings
+            .slice(0, 3)
+            .join("；")}`
+        );
+      }
 
       router.refresh();
     } catch (error) {

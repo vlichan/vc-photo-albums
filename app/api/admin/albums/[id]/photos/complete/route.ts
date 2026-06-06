@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type UploadedPhoto = {
   imageUrl: string;
+  thumbnailUrl?: string;
   fileName: string;
   mimeType: string;
   fileSize: number;
@@ -75,7 +76,7 @@ export async function POST(
     const rows = uploadedPhotos.map((photo, index) => ({
       album_id: album.id,
       image_url: photo.imageUrl,
-      thumbnail_url: photo.imageUrl,
+      thumbnail_url: photo.thumbnailUrl || photo.imageUrl,
       sort_order: firstSortOrder + index * SORT_ORDER_STEP,
       image_code: getGeneratedImageCode(firstImageCode + index),
       mime_type: photo.mimeType || "application/octet-stream",

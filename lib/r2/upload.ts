@@ -32,6 +32,13 @@ export function createR2ObjectKey(fileName: string, albumSlug: string) {
   return `albums/${albumSlug}/${randomUUID()}.${extension}`;
 }
 
+export function createR2ThumbnailObjectKey(fileName: string, albumSlug: string, mimeType: string) {
+  const fallbackExtension = fileName.split(".").pop()?.toLowerCase() || "jpg";
+  const extension = mimeType === "image/webp" ? "webp" : "jpg";
+
+  return `albums/${albumSlug}/thumbs/${randomUUID()}.${extension || fallbackExtension}`;
+}
+
 export function getR2PublicUrl(key: string) {
   const config = getR2Config();
   return `${config.publicBaseUrl.replace(/\/$/, "")}/${key}`;

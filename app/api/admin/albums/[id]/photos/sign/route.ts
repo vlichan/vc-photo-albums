@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   createR2ObjectKey,
+  createR2ThumbnailObjectKey,
   createR2PresignedPutUrl,
   getR2PublicUrl
 } from "@/lib/r2/upload";
@@ -33,7 +34,11 @@ export async function POST(
 
   try {
     const { id: albumId } = await context.params;
-    const body = (await request.json()) as { fileName?: string; contentType?: string };
+    const body = (await request.json()) as {
+      fileName?: string;
+      contentType?: string;
+      uploadType?: "image" | "thumbnail";
+    };
 
     if (!body.fileName) {
       return NextResponse.json(
@@ -46,14 +51,15 @@ export async function POST(
     }
 
     const album = await getAdminAlbumById(albumId);
-    const key = createR2ObjectKey(body.fileName, album.slug);
+    const contentType = body.contentType || "application/octet-stream";
+    const key =
+      body.uploadType === "thumbnail"
+        ? createR2ThumbnailObjectKey(body.fileName, album.slug, contentType)
+        : createR2ObjectKey(body.fileName, album.slug);
 
     return NextResponse.json({
       ok: true,
-      uploadUrl: await createR2PresignedPutUrl(
-        key,
-        body.contentType || "application/octet-stream"
-      ),
+      uploadUrl: await createR2PresignedPutUrl(key, contentType),
       imageUrl: getR2PublicUrl(key)
     });
   } catch (error) {
