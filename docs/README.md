@@ -118,7 +118,77 @@ R2 需要：
 - `width`
 - `height`
 
-当前缩略图字段暂时与原图 URL 相同，后续如要做真实缩略图生成，再单独扩展。
+新上传图片会在浏览器端生成真实缩略图，原图和缩略图都会直传 R2：
+
+- 原图：`albums/{albumSlug}/{uuid}.{ext}`
+- 缩略图：`albums/{albumSlug}/thumbs/{uuid}.webp`
+
+前台列表读取 `thumbnail_url`，点击放大预览读取 `image_url`。
+
+## 旧图片批量生成真实缩略图
+
+如果旧数据里存在 `photos.thumbnail_url = photos.image_url`，可以使用一次性脚本为旧图片生成 WebP 缩略图，并只更新 `photos.thumbnail_url`。
+
+脚本不会修改数据库结构，不会修改 `image_url`，不会删除任何 R2 原图，也不会修改前后台 UI。
+
+需要的环境变量：
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET_NAME=
+R2_PUBLIC_URL=https://img.maggieshop.vip
+```
+
+兼容已有变量：
+
+- `R2_BUCKET_NAME` 如果未设置，脚本会尝试使用 `R2_BUCKET`。
+- `R2_PUBLIC_URL` 如果未设置，脚本会尝试使用 `R2_PUBLIC_BASE_URL`，再 fallback 到 `https://img.maggieshop.vip`。
+
+注意：
+
+- `SUPABASE_SERVICE_ROLE_KEY` 只能用于本地脚本或服务端环境。
+- 不要把 `SUPABASE_SERVICE_ROLE_KEY` 暴露到浏览器端。
+- 不要把真实 key 提交到 GitHub。
+
+dry-run 预览，不下载原图、不上传 R2、不更新数据库：
+
+```bash
+npm run generate:thumbnails -- --dry-run
+```
+
+小批量测试，例如先处理 20 张：
+
+```bash
+npm run generate:thumbnails -- --apply --confirm --limit 20
+```
+
+从 offset 继续：
+
+```bash
+npm run generate:thumbnails -- --apply --confirm --offset 20 --limit 20
+```
+
+从某个 photo id 之后继续：
+
+```bash
+npm run generate:thumbnails -- --apply --confirm --cursor photo-id-here --limit 20
+```
+
+全量执行：
+
+```bash
+npm run generate:thumbnails -- --apply --confirm
+```
+
+回滚建议：
+
+1. 执行全量 apply 前，在 Supabase 里导出或备份 `photos` 表。
+2. 脚本只更新 `thumbnail_url`，所以回滚时可以把备份里的旧 `thumbnail_url` 写回。
+3. 脚本不会删除任何 R2 文件；如果需要清理已生成缩略图，确认数据库已回滚后，再按 `albums/**/thumbs/*.webp` 单独清理。
 
 ## R2 图片公开域名迁移
 
