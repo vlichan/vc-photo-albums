@@ -207,6 +207,26 @@ export async function deleteAlbumPhotosWithState(
       };
     }
 
+    const { data: albumData, error: albumLoadError } = await supabase
+      .from("albums")
+      .select("cover_image")
+      .eq("id", albumId)
+      .single();
+
+    if (albumLoadError) {
+      return {
+        ok: false,
+        message: `读取相册封面失败：${albumLoadError.message}`
+      };
+    }
+
+    const coverImage = (albumData?.cover_image as string | null) ?? "";
+    const shouldClearCoverImage =
+      coverImage !== "" &&
+      photos.some(
+        (photo) => photo.image_url === coverImage || photo.thumbnail_url === coverImage
+      );
+
     try {
       await deleteR2Urls(
         photos.flatMap((photo) => [photo.image_url, photo.thumbnail_url])
@@ -233,7 +253,25 @@ export async function deleteAlbumPhotosWithState(
       };
     }
 
+    if (shouldClearCoverImage) {
+      const { error: coverUpdateError } = await supabase
+        .from("albums")
+        .update({
+          cover_image: null
+        })
+        .eq("id", albumId);
+
+      if (coverUpdateError) {
+        return {
+          ok: false,
+          message: `图片已删除，但清空失效封面失败：${coverUpdateError.message}`
+        };
+      }
+    }
+
     revalidatePath(`/admin/albums/${albumId}`);
+    revalidatePath("/admin/albums");
+    revalidatePath("/");
     revalidatePath(`/album/${albumSlug}`);
 
     return {

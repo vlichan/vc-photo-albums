@@ -23,6 +23,14 @@ type AlbumRow = {
   photos?: { count: number } | { count: number }[] | null;
 };
 
+type AlbumFallbackPhotoRow = {
+  album_id: string;
+  image_url: string | null;
+  thumbnail_url: string | null;
+  sort_order: number | null;
+  created_at: string;
+};
+
 type PhotoRow = {
   id: string;
   album_id: string;
@@ -54,7 +62,25 @@ function mapCategory(row: CategoryRow): Category {
   };
 }
 
-function mapAlbum(row: AlbumRow): AlbumWithCategory {
+function getFallbackCoverByAlbumId(rows: AlbumFallbackPhotoRow[]) {
+  const fallbackByAlbumId = new Map<string, string>();
+
+  for (const row of rows) {
+    if (fallbackByAlbumId.has(row.album_id)) {
+      continue;
+    }
+
+    const coverUrl = row.thumbnail_url || row.image_url || "";
+
+    if (coverUrl) {
+      fallbackByAlbumId.set(row.album_id, coverUrl);
+    }
+  }
+
+  return fallbackByAlbumId;
+}
+
+function mapAlbum(row: AlbumRow, fallbackCoverImage = ""): AlbumWithCategory {
   const category = Array.isArray(row.categories) ? row.categories[0] : row.categories;
   const photoCount = Array.isArray(row.photos) ? row.photos[0] : row.photos;
 
@@ -63,7 +89,7 @@ function mapAlbum(row: AlbumRow): AlbumWithCategory {
     title: row.title,
     slug: row.slug,
     description: row.description ?? "",
-    coverImage: row.cover_image ?? "",
+    coverImage: row.cover_image || fallbackCoverImage,
     categoryId: row.category_id ?? "",
     categoryName: category?.name ?? "未分类",
     photoCount: photoCount?.count ?? 0,
@@ -124,7 +150,28 @@ export async function getAdminAlbums(categorySlug?: string) {
     throw new Error(`相册读取失败：${error.message}`);
   }
 
-  return (data ?? []).map((row) => mapAlbum(row as AlbumRow));
+  const rows = (data ?? []) as AlbumRow[];
+  const albumIds = rows.map((row) => row.id);
+  const fallbackRows =
+    albumIds.length > 0
+      ? await supabase
+          .from("photos")
+          .select("album_id, image_url, thumbnail_url, sort_order, created_at")
+          .in("album_id", albumIds)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true })
+          .limit(10000)
+      : { data: [], error: null };
+
+  if (fallbackRows.error) {
+    throw new Error(`相册兜底封面读取失败：${fallbackRows.error.message}`);
+  }
+
+  const fallbackCoverByAlbumId = getFallbackCoverByAlbumId(
+    (fallbackRows.data ?? []) as AlbumFallbackPhotoRow[]
+  );
+
+  return rows.map((row) => mapAlbum(row, fallbackCoverByAlbumId.get(row.id) ?? ""));
 }
 
 export async function getAdminAlbumById(id: string) {

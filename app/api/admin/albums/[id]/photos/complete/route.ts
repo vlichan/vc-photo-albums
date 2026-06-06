@@ -31,6 +31,11 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unknown complete error.";
 }
 
+function getFirstUploadedCoverUrl(photos: UploadedPhoto[]) {
+  const firstPhoto = photos[0];
+  return firstPhoto ? firstPhoto.thumbnailUrl || firstPhoto.imageUrl : "";
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> }
@@ -96,12 +101,34 @@ export async function POST(
       );
     }
 
+    let coverWarning = "";
+
+    if (!album.coverImage) {
+      const nextCoverImage = getFirstUploadedCoverUrl(uploadedPhotos);
+
+      if (nextCoverImage) {
+        const { error: coverError } = await supabase
+          .from("albums")
+          .update({
+            cover_image: nextCoverImage
+          })
+          .eq("id", album.id)
+          .or("cover_image.is.null,cover_image.eq.");
+
+        if (coverError) {
+          coverWarning = ` 图片上传成功，但自动设置封面失败：${coverError.message}`;
+        }
+      }
+    }
+
     revalidatePath(`/admin/albums/${album.id}`);
+    revalidatePath("/admin/albums");
+    revalidatePath("/");
     revalidatePath(`/album/${album.slug}`);
 
     return NextResponse.json({
       ok: true,
-      message: `已写入 ${rows.length} 张图片。`
+      message: `已写入 ${rows.length} 张图片。${coverWarning}`
     });
   } catch (error) {
     return NextResponse.json(

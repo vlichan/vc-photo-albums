@@ -205,7 +205,7 @@ async function saveUploadedPhotos(albumId: string, photos: UploadedPhoto[]) {
     })
   });
 
-  await readJsonResponse(response);
+  return readJsonResponse<{ message?: string }>(response);
 }
 
 export function PhotoUploadForm({ albumId }: { albumId: string }) {
@@ -348,8 +348,8 @@ export function PhotoUploadForm({ albumId }: { albumId: string }) {
       }
 
       setStatus("正在写入 photos 表。");
-      await saveUploadedPhotos(albumId, uploadedPhotos);
-      setStatus(`上传完成，共 ${files.length} 张图片。`);
+      const saveResult = await saveUploadedPhotos(albumId, uploadedPhotos);
+      setStatus(saveResult.message || `上传完成，共 ${files.length} 张图片。`);
       resetUploadState({ keepStatus: true, keepStats: true });
 
       if (thumbnailWarnings.length > 0) {
