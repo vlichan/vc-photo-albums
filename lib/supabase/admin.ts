@@ -45,8 +45,29 @@ type PhotoRow = {
   created_at: string;
 };
 
+type PhotoSizeRow = {
+  file_size: number | null;
+};
+
+export type AdminStorageUsage = {
+  ok: boolean;
+  totalUsedBytes: number;
+  limitBytes: number;
+  limitGb: number;
+  missingFileSizeCount: number;
+  errorMessage?: string;
+};
+
+const STORAGE_PAGE_SIZE = 1000;
+const BYTES_PER_GB = 1024 ** 3;
+
 function formatDate(value: string) {
   return value.slice(0, 10);
+}
+
+function getStorageLimitGb() {
+  const value = Number(process.env.R2_FREE_STORAGE_LIMIT_GB);
+  return Number.isFinite(value) && value > 0 ? value : 10;
 }
 
 function mapCategory(row: CategoryRow): Category {
@@ -233,4 +254,65 @@ export async function getAdminCounts() {
     categories: categoriesResult.count ?? 0,
     photos: photosResult.count ?? 0
   };
+}
+
+export async function getAdminStorageUsage(): Promise<AdminStorageUsage> {
+  const supabase = await createSupabaseServerClient();
+  const limitGb = getStorageLimitGb();
+  let totalUsedBytes = 0;
+  let missingFileSizeCount = 0;
+  let from = 0;
+
+  try {
+    while (true) {
+      const { data, error } = await supabase
+        .from("photos")
+        .select("file_size")
+        .range(from, from + STORAGE_PAGE_SIZE - 1);
+
+      if (error) {
+        return {
+          ok: false,
+          totalUsedBytes: 0,
+          limitBytes: limitGb * BYTES_PER_GB,
+          limitGb,
+          missingFileSizeCount,
+          errorMessage: `存储统计失败：${error.message}`
+        };
+      }
+
+      const rows = (data ?? []) as PhotoSizeRow[];
+
+      for (const row of rows) {
+        if (typeof row.file_size === "number" && Number.isFinite(row.file_size)) {
+          totalUsedBytes += row.file_size;
+        } else {
+          missingFileSizeCount += 1;
+        }
+      }
+
+      if (rows.length < STORAGE_PAGE_SIZE) {
+        break;
+      }
+
+      from += STORAGE_PAGE_SIZE;
+    }
+
+    return {
+      ok: true,
+      totalUsedBytes,
+      limitBytes: limitGb * BYTES_PER_GB,
+      limitGb,
+      missingFileSizeCount
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      totalUsedBytes: 0,
+      limitBytes: limitGb * BYTES_PER_GB,
+      limitGb,
+      missingFileSizeCount,
+      errorMessage: error instanceof Error ? error.message : "存储统计失败：未知错误。"
+    };
+  }
 }
