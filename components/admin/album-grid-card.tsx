@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Check, Eye, Globe2, LockKeyhole, Pencil } from "lucide-react";
+import { Check } from "lucide-react";
 import { AlbumFormModal } from "@/components/admin/album-form-modal";
 import type { AlbumWithCategory, Category } from "@/types/album";
 
@@ -17,6 +17,12 @@ export function AlbumGridCard({
   isSelected: boolean;
   onToggle: () => void;
 }) {
+  const statusText = album.isPublic
+    ? album.password
+      ? "公开 · 密码"
+      : "公开"
+    : "私密";
+
   return (
     <div className="group relative">
       <button
@@ -54,43 +60,36 @@ export function AlbumGridCard({
             {album.photoCount ?? 0}
           </span>
         </div>
-        <div className="space-y-1 pt-2">
+        <div className="pt-1.5">
           <h2 className="truncate whitespace-nowrap text-sm font-medium text-ink">
             {album.title}
           </h2>
-          <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[11px] uppercase tracking-[0.12em] text-muted">
-            {album.isPublic ? (
-              <span title="公开">
-                <Globe2 className="h-3.5 w-3.5" />
-              </span>
-            ) : null}
-            {album.password ? (
-              <span title="已设置密码">
-                <LockKeyhole className="h-3.5 w-3.5" />
-              </span>
-            ) : null}
-          </div>
         </div>
       </Link>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted">
+        <span className="truncate">{statusText}</span>
+        <div className="flex shrink-0 items-center gap-2">
         <AlbumFormModal
           album={album}
           categories={categories}
           trigger={
-            <span className="inline-flex items-center gap-1.5 border border-line bg-white/90 px-2.5 py-1.5 text-xs text-muted transition hover:border-ink hover:text-ink">
-              <Pencil className="h-3.5 w-3.5" />
-              编辑相册
+            <span
+              className="text-muted transition hover:text-ink"
+              onClick={(event) => event.stopPropagation()}
+            >
+              编辑
             </span>
           }
         />
         <Link
           href={`/album/${album.slug}`}
-          className="inline-flex items-center gap-1.5 border border-line bg-white/90 px-2.5 py-1.5 text-xs text-muted transition hover:border-ink hover:text-ink"
+          className="text-muted transition hover:text-ink"
+          onClick={(event) => event.stopPropagation()}
           target="_blank"
         >
-          <Eye className="h-3.5 w-3.5" />
           预览
         </Link>
+        </div>
       </div>
     </div>
   );
