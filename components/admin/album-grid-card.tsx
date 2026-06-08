@@ -2,15 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Check, Eye, Globe2, Images, LockKeyhole } from "lucide-react";
-import type { AlbumWithCategory } from "@/types/album";
+import { Check, Eye, Globe2, LockKeyhole, Pencil } from "lucide-react";
+import { AlbumFormModal } from "@/components/admin/album-form-modal";
+import type { AlbumWithCategory, Category } from "@/types/album";
 
 export function AlbumGridCard({
   album,
+  categories,
   isSelected,
   onToggle
 }: {
   album: AlbumWithCategory;
+  categories: Category[];
   isSelected: boolean;
   onToggle: () => void;
 }) {
@@ -70,13 +73,16 @@ export function AlbumGridCard({
         </div>
       </Link>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <Link
-          href={`/admin/albums/${album.id}`}
-          className="inline-flex items-center gap-1.5 border border-line bg-white/90 px-2.5 py-1.5 text-xs text-muted transition hover:border-ink hover:text-ink"
-        >
-          <Images className="h-3.5 w-3.5" />
-          管理图片
-        </Link>
+        <AlbumFormModal
+          album={album}
+          categories={categories}
+          trigger={
+            <span className="inline-flex items-center gap-1.5 border border-line bg-white/90 px-2.5 py-1.5 text-xs text-muted transition hover:border-ink hover:text-ink">
+              <Pencil className="h-3.5 w-3.5" />
+              编辑相册
+            </span>
+          }
+        />
         <Link
           href={`/album/${album.slug}`}
           className="inline-flex items-center gap-1.5 border border-line bg-white/90 px-2.5 py-1.5 text-xs text-muted transition hover:border-ink hover:text-ink"

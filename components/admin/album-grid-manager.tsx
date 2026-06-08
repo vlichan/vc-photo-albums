@@ -124,6 +124,7 @@ export function AlbumGridManager({
           <AlbumGridCard
             key={album.id}
             album={album}
+            categories={categories}
             isSelected={selectedIds.includes(album.id)}
             onToggle={() => toggleAlbum(album.id)}
           />
