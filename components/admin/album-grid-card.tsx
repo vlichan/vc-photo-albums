@@ -67,14 +67,13 @@ export function AlbumGridCard({
         </div>
       </Link>
       <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted">
-        <span className="truncate">{statusText}</span>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
         <AlbumFormModal
           album={album}
           categories={categories}
           trigger={
             <span
-              className="text-muted transition hover:text-ink"
+              className="inline-flex border border-line bg-white px-2 py-1 text-muted transition hover:border-ink hover:text-ink"
               onClick={(event) => event.stopPropagation()}
             >
               编辑
@@ -83,13 +82,14 @@ export function AlbumGridCard({
         />
         <Link
           href={`/album/${album.slug}`}
-          className="text-muted transition hover:text-ink"
+          className="inline-flex border border-line bg-white px-2 py-1 text-muted transition hover:border-ink hover:text-ink"
           onClick={(event) => event.stopPropagation()}
           target="_blank"
         >
           预览
         </Link>
         </div>
+        <span className="truncate text-right">{statusText}</span>
       </div>
     </div>
   );
