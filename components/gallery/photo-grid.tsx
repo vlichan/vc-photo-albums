@@ -94,6 +94,7 @@ export function PhotoGrid({
                 src={photo.thumbnailUrl}
                 alt={getDisplayCode(photo, index, startIndex)}
                 fill
+                unoptimized
                 sizes="(min-width: 1536px) 12.5vw, (min-width: 1280px) 14vw, (min-width: 1024px) 16vw, (min-width: 768px) 20vw, (min-width: 430px) 33vw, 50vw"
                 className={`object-cover object-center transition duration-500 group-hover:scale-[1.02] ${
                   loadedPhotoIds.has(photo.id) ? "opacity-100" : "opacity-0"
@@ -158,6 +159,7 @@ export function PhotoGrid({
               alt={activeDisplayCode}
               width={activePhoto.width}
               height={activePhoto.height}
+              unoptimized
               className="max-h-full w-auto object-contain"
               priority
             />

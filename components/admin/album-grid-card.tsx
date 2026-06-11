@@ -48,6 +48,7 @@ export function AlbumGridCard({
               alt={album.title}
               className="object-cover transition duration-500 group-hover:scale-[1.025]"
               fill
+              unoptimized
               sizes="(min-width: 1280px) 14vw, (min-width: 1024px) 16vw, (min-width: 768px) 20vw, 50vw"
               src={album.coverImage}
             />

@@ -279,6 +279,7 @@ export function PhotoManager({
                 alt={photo.imageCode}
                 className="object-cover"
                 fill
+                unoptimized
                 sizes="(min-width: 1536px) 10vw, (min-width: 1280px) 12.5vw, (min-width: 1024px) 16vw, (min-width: 768px) 25vw, 50vw"
                 src={photo.thumbnailUrl}
               />
@@ -337,6 +338,7 @@ export function PhotoManager({
                 className="max-h-full w-auto object-contain"
                 height={previewPhoto.height}
                 src={previewPhoto.imageUrl}
+                unoptimized
                 width={previewPhoto.width}
               />
             </div>
